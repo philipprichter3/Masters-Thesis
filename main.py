@@ -6,10 +6,8 @@ from qm_env_montecarlo import MonteCarlo_Environment
 
 def main():
 
-    #hello
-
     lambda_c = 0.05      #<---output by RL SAC in future
-    
+
     params = {
         "wc": 1.0,
         "wb": 1.0,
