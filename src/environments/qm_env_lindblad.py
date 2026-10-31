@@ -1,7 +1,7 @@
 
 import qutip as qt
 
-from qm_env import Environment
+from src.environments.qm_env import Environment
 
 
 class Lindblad_Environment(Environment):

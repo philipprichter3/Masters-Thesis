@@ -1,11 +1,12 @@
 from matplotlib import pyplot as plt
 
-from qm_env_lindblad import Lindblad_Environment
-from qm_env_montecarlo import MonteCarlo_Environment
+from src.environments.qm_env_lindblad import Lindblad_Environment
+from src.environments.qm_env_montecarlo import MonteCarlo_Environment
 
 LAMBDA_C = 0.15      #<---output by RL SAC in future
 
 PARAMS = {
+    #general
     "wc": 1.0,
     "wb": 1.0,
     "Nc": 6,
@@ -14,9 +15,12 @@ PARAMS = {
     "kappa": 0.2,
     "dt": 0.05,
     "tau": 10.0,
-    
+
+    #for monte carlo
     "ntraj": 150,
     "seed": 42
+
+    #for SSE
 }
 
 def run(env, u):
@@ -30,7 +34,7 @@ def run(env, u):
     return history
 
 def main():
-    
+
     lindblad_history = run(
         Lindblad_Environment(PARAMS), 
         LAMBDA_C
