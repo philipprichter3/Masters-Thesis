@@ -1,12 +1,12 @@
 import torch
 from torch import nn
 
+from SAC.core.qfunction import QFunction
+from SAC.core.squashed_gaussian_actor import SquashedGaussianActor
 from src.SAC.core.alpha import Alpha
-from src.SAC.core.mlp_qfunction import MLPQFunction
-from src.SAC.core.mlp_squashed_gaussian_actor import SquashedGaussianMLPActor
 
 
-class MLPActorCritic(nn.Module):
+class ActorCritic(nn.Module):
     """
     Module that contains two value functions, self.q1 and self.q2, the policy self.pi,
     and a module for the "temperature" parameter self.alpha.
@@ -27,10 +27,10 @@ class MLPActorCritic(nn.Module):
         super().__init__()
 
         # build policy, value functions, and module for the value of alpha
-        self.pi = SquashedGaussianMLPActor(observation_space, action_space, hidden_sizes, activation,
+        self.pi = SquashedGaussianActor(observation_space, action_space, hidden_sizes, activation,
                                             min_cov_eigen=min_cov_eigen)
-        self.q1 = MLPQFunction(observation_space, action_space, hidden_sizes, activation)
-        self.q2 = MLPQFunction(observation_space, action_space, hidden_sizes, activation)
+        self.q1 = QFunction(observation_space, action_space, hidden_sizes, activation)
+        self.q2 = QFunction(observation_space, action_space, hidden_sizes, activation)
         self.alpha = Alpha()
 
     def act(self, obs, deterministic=False):

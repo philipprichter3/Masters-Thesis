@@ -6,7 +6,7 @@ from src.SAC.core.rescale_inputs import RescaleInput
 from src.SAC.core.utils import mlp
 
 
-class MLPQFunction(nn.Module):
+class QFunction(nn.Module):
     """
     Class representing a q-value function, implemented with fully connected layers
     that stack the state-action as input, and output the value of such state-action

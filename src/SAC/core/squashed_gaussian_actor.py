@@ -8,7 +8,7 @@ from src.SAC.core.rescale_inputs import RescaleInput
 from src.SAC.core.utils import mlp
 
 
-class SquashedGaussianMLPActor(nn.Module):
+class SquashedGaussianActor(nn.Module):
     """
     Class representing the policy, implemented with fully connected layers
     that take the state as input, and outputs the averages and the covariance matrix
