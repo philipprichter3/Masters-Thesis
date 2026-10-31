@@ -160,13 +160,3 @@ class Environment(ABC):
             "joint_purity": self.joint_purity(),
             "photon_count": self.photon_count(),
         }
-
-    def run(self, u):
-
-        history = []
-
-        while self.t < self.tau:
-            result = self.step(u)
-            history.append(result)
-
-        return history

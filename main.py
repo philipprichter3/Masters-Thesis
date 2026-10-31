@@ -3,31 +3,43 @@ from matplotlib import pyplot as plt
 from qm_env_lindblad import Lindblad_Environment
 from qm_env_montecarlo import MonteCarlo_Environment
 
+LAMBDA_C = 0.15      #<---output by RL SAC in future
+
+PARAMS = {
+    "wc": 1.0,
+    "wb": 1.0,
+    "Nc": 6,
+    "Nb": 6,
+    "Nc_max": 24,
+    "kappa": 0.2,
+    "dt": 0.05,
+    "tau": 10.0,
+    
+    "ntraj": 150,
+    "seed": 42
+}
+
+def run(env, u):
+
+    history = []
+
+    while env.t < env.tau:
+        result = env.step(u)
+        history.append(result)
+
+    return history
 
 def main():
+    
+    lindblad_history = run(
+        Lindblad_Environment(PARAMS), 
+        LAMBDA_C
+    )
 
-    lambda_c = 0.05      #<---output by RL SAC in future
-
-    params = {
-        "wc": 1.0,
-        "wb": 1.0,
-        "Nc": 6,
-        "Nb": 6,
-        "Nc_max": 24,
-        "kappa": 0.2,
-        "dt": 0.05,
-        "tau": 10.0,
-        "ntraj": 300,
-        "seed": 42
-    }
-
-    lindblad_history = Lindblad_Environment(
-        params
-    ).run(lambda_c)
-
-    montecarlo_history = MonteCarlo_Environment(
-        params
-    ).run(lambda_c)
+    montecarlo_history = run(
+        MonteCarlo_Environment(PARAMS), 
+        LAMBDA_C
+    )
 
     key = "ergotropy_full"
 
@@ -35,7 +47,7 @@ def main():
         [h["time"] for h in lindblad_history], 
         [h[key] for h in lindblad_history],
         c = "blue",
-        label = "Lindblad Groundtruth"
+        label = "Lindblad ergotropy"
     )
 
     plt.plot(
@@ -43,7 +55,7 @@ def main():
         [h[key] for h in montecarlo_history],
         c = "green",
         ls = "-.",
-        label = "Ergotropy"
+        label = "MC ergotropy"
     )
 
     plt.plot(
@@ -51,7 +63,7 @@ def main():
         [h["daemonic_ergotropy_full"] for h in montecarlo_history],
         c = "red",
         ls = "--",
-        label = "Daemonic Ergotropy"
+        label = "MC daemonic ergotropy"
     )  
 
     plt.legend()
