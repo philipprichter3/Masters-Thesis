@@ -5,7 +5,7 @@ from environments.qm_env_montecarlo import MonteCarlo_Environment
 
 LAMBDA_C = 0.15      #<---output by RL SAC in future
 
-PARAMS = {
+ENV_PARAMS = {
     #general
     "wc": 1.0,
     "wb": 1.0,
@@ -17,10 +17,14 @@ PARAMS = {
     "tau": 10.0,
 
     #for monte carlo
-    "ntraj": 150,
+    "ntraj": 16,
     "seed": 42
 
     #for SSE
+}
+
+SAC_PARAMS = {
+    
 }
 
 def run(env, u):
@@ -36,12 +40,12 @@ def run(env, u):
 def main():
 
     lindblad_history = run(
-        Lindblad_Environment(PARAMS), 
+        Lindblad_Environment(ENV_PARAMS), 
         LAMBDA_C
     )
 
     montecarlo_history = run(
-        MonteCarlo_Environment(PARAMS), 
+        MonteCarlo_Environment(ENV_PARAMS), 
         LAMBDA_C
     )
 

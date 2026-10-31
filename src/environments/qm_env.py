@@ -160,3 +160,11 @@ class Environment(ABC):
             "joint_purity": self.joint_purity(),
             "photon_count": self.photon_count(),
         }
+
+    def replay(env, u_values):
+        history = []
+
+        for u in u_values:
+            history.append(env.step(float(u)))
+
+        return history

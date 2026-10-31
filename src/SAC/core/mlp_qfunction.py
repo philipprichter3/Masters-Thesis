@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.SAC.core.utils import RescaleInput, mlp
+from src.SAC.core.rescale_inputs import RescaleInput
+from src.SAC.core.utils import mlp
 
 
 class MLPQFunction(nn.Module):
