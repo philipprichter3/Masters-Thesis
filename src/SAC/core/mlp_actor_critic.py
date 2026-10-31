@@ -1,8 +1,9 @@
 import torch
-from alpha import Alpha
-from mlp_qfunction import MLPQFunction
-from mlp_squashed_gaussian_actor import SquashedGaussianMLPActor
 from torch import nn
+
+from src.SAC.core.alpha import Alpha
+from src.SAC.core.mlp_qfunction import MLPQFunction
+from src.SAC.core.mlp_squashed_gaussian_actor import SquashedGaussianMLPActor
 
 
 class MLPActorCritic(nn.Module):

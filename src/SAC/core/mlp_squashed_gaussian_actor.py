@@ -3,7 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.distributions.multivariate_normal import MultivariateNormal
-from utils import RescaleInput, mlp
+
+from src.SAC.core.utils import RescaleInput, mlp
 
 
 class SquashedGaussianMLPActor(nn.Module):
