@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 
-from src.environments.qm_env_lindblad import Lindblad_Environment
-from src.environments.qm_env_montecarlo import MonteCarlo_Environment
+from environments.qm_env_lindblad import Lindblad_Environment
+from environments.qm_env_montecarlo import MonteCarlo_Environment
 
 LAMBDA_C = 0.15      #<---output by RL SAC in future
 
