@@ -22,20 +22,26 @@ class WeightScheduler(nn.Module):
     """
 
     def __init__(self, training_hyperparams, obj_num=None):
+
         super().__init__()
         
         #create the main tensors that will produce the weights
         if "C_START" in training_hyperparams:
+
             self.register_buffer("c_start", torch.tensor(training_hyperparams["C_START"], dtype=torch.float32))
             self.register_buffer("c_end", torch.tensor(training_hyperparams["C_END"], dtype=torch.float32))
             self.register_buffer("c_mean", torch.tensor(training_hyperparams["C_MEAN"], dtype=torch.float32))
             self.register_buffer("c_width", torch.tensor(training_hyperparams["C_WIDTH"], dtype=torch.float32))
+
         else:
+
             assert obj_num is not None
+
             self.register_buffer("c_start", torch.zeros((obj_num,), dtype=torch.float32))
             self.register_buffer("c_end", torch.zeros((obj_num,), dtype=torch.float32))
             self.register_buffer("c_mean", torch.tensor(1., dtype=torch.float32))
             self.register_buffer("c_width", torch.tensor(1., dtype=torch.float32))
+
             self.c_start[0] = 1.
             self.c_end[0] = 1.
 
@@ -53,10 +59,38 @@ class WeightScheduler(nn.Module):
             return_numpy_cpu(bool): whether the output should by a np.array or torch.tensor 
         """
         if return_numpy_cpu:
-            return self.return_schedule(step, self.c_start_cpu, self.c_end_cpu, self.c_mean_cpu, self.c_width_cpu, np)
-        else:
-            return self.return_schedule(step, self.c_start, self.c_end, self.c_mean, self.c_width, torch)
 
-    def return_schedule(self, step, start, end, mean, width, module):
+            return self.return_schedule(
+                step, 
+                self.c_start_cpu, 
+                self.c_end_cpu, 
+                self.c_mean_cpu, 
+                self.c_width_cpu, 
+                np
+            )
+        else:
+
+            return self.return_schedule(
+                step,
+                self.c_start, 
+                self.c_end, 
+                self.c_mean, 
+                self.c_width, 
+                torch
+            )
+
+    def return_schedule(
+            self, 
+            step, 
+            start, 
+            end, 
+            mean, 
+            width, 
+            module
+        ):
+
         """return the Fermi distribution computed in the current step"""
-        return end + (start - end)/(1. + module.exp( (step-mean)/width ))
+        return \
+            end \
+            + (start - end) \
+            / (1. + module.exp((step-mean) / width))

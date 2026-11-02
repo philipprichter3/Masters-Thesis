@@ -22,7 +22,7 @@ class Lindblad_Environment(Environment):
 # ======================================================================
 
     def evolve_state(self, u, duration):
-        """Unconditional Lindblad evolution."""
+        """Lindblad evolution"""
 
         H = self.H0 + u * self.Hint
         c_ops = [self.c_op] if self.kappa > 0 else []

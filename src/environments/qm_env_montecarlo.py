@@ -46,7 +46,7 @@ class MonteCarlo_Environment(Environment):
 # ============================================================
 
     def _ergotropy_of_battery_state(self, rho_b, space="symmetric"):
-        """Ergotropy of an individual reduced battery state."""
+        """Ergotropy of an individual reduced battery state"""
 
         eigenvalues = np.linalg.eigvalsh(rho_b.full())
         eigenvalues = np.sort(
@@ -55,7 +55,6 @@ class MonteCarlo_Environment(Environment):
 
         eigenvalues /= eigenvalues.sum()
 
-        # Battery energy in this conditional state
         stored_energy = float(
             np.real(qt.expect(self.Hb_bare, rho_b))
         )
@@ -67,19 +66,15 @@ class MonteCarlo_Environment(Environment):
         elif space == "full":
             passive_energy = self.wb * (1 - eigenvalues[0])
 
-        else:
-            raise ValueError("Unknown ergotropy space")
-
         return max(0.0, float(stored_energy - passive_energy))
 
     def daemonic_ergotropy(self, space="symmetric"):
-        """Average ergotropy of conditional battery states."""
+        """Average ergotropy of conditional battery states"""
 
         ergotropies = []
 
         for psi in self.psis:
 
-            # Trace out the cavity for this trajectory
             rho_b = psi.ptrace(1)
 
             W = self._ergotropy_of_battery_state(
@@ -95,7 +90,7 @@ class MonteCarlo_Environment(Environment):
 # ======================================================================
 
     def evolve_state(self, u, duration):
-        """Monte Carlo quantum trajectory evolution."""
+        """Monte Carlo quantum trajectory evolution"""
 
         H = self.H0 + u * self.Hint
 

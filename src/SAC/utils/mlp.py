@@ -1,7 +1,5 @@
 from torch import nn
 
-#Constants used by the NNs to prevent numerical instabilities
-UNIFORM_SIGMA =3.46
 
 def mlp(sizes, activation, output_activation=nn.Identity):
     """
@@ -15,10 +13,13 @@ def mlp(sizes, activation, output_activation=nn.Identity):
     Returns:
         stacked fully connected layers
     """
+
     layers = []
+
     for j in range(len(sizes)-1):
         act = activation if j < len(sizes)-2 else output_activation
         layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
+        
     return nn.Sequential(*layers)
 
 

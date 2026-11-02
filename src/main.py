@@ -18,13 +18,15 @@ ENV_PARAMS = {
 
     #for monte carlo
     "ntraj": 16,
-    "seed": 42
+    "seed": 42,
 
     #for SSE
-}
 
-SAC_PARAMS = {
-    
+    #for SAC
+    "min_u": -0.3,
+    "max_u": 0.3,
+    "objective": "ergotropy_full",
+    "reward_coeff": 1.0
 }
 
 def run(env, u):

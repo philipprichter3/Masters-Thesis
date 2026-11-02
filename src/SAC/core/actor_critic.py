@@ -1,40 +1,53 @@
 import torch
 from torch import nn
 
+from SAC.core.alpha import Alpha
 from SAC.core.qfunction import QFunction
 from SAC.core.squashed_gaussian_actor import SquashedGaussianActor
-from src.SAC.core.alpha import Alpha
 
 
 class ActorCritic(nn.Module):
-    """
-    Module that contains two value functions, self.q1 and self.q2, the policy self.pi,
-    and a module for the "temperature" parameter self.alpha.
-    Both the value function and the policy are parameterizes using an arbitrary number of fully connected layers.
-  
-    Args:
-        observation_space(gym.spaces): observation space of the environment (must be 1D array)
-        action_space (gym.spaces): action space of sac_envs environments (must be 1D array)
-        hidden_sizes (tuple(int)): size of each of the hidden layers that will be addded to 
-            both the value and policy functions
-        activation: activation function for all layers except for the output layer
-        min_cov_eigen (float): used for stability when computing the covariance matrix of the multivariate
-            normal distribution.
 
-    """
-    def __init__(self, observation_space, action_space, hidden_sizes=(256,256),
-                 activation=nn.ReLU, min_cov_eigen = 1.e-8):
+    def __init__(
+            self, 
+            observation_space, 
+            action_space, 
+            hidden_sizes=(256,256),
+            activation=nn.ReLU, 
+            min_cov_eigen = 1.e-8
+        ):
+
         super().__init__()
 
-        # build policy, value functions, and module for the value of alpha
-        self.pi = SquashedGaussianActor(observation_space, action_space, hidden_sizes, activation,
-                                            min_cov_eigen=min_cov_eigen)
-        self.q1 = QFunction(observation_space, action_space, hidden_sizes, activation)
-        self.q2 = QFunction(observation_space, action_space, hidden_sizes, activation)
+        self.pi = SquashedGaussianActor(
+            observation_space, 
+            action_space, 
+            hidden_sizes, 
+            activation,
+            min_cov_eigen=min_cov_eigen
+        )
+
+        self.q1 = QFunction(
+            observation_space, 
+            action_space, 
+            hidden_sizes, 
+            activation
+        )
+
+        self.q2 = QFunction(
+            observation_space, 
+            action_space, 
+            hidden_sizes, 
+            activation
+        )
+
         self.alpha = Alpha()
 
     def act(self, obs, deterministic=False):
-        """ return the action, chosen according to deterministic, given a single unbatched observation obs """
+        """ 
+        return the action, chosen according to deterministic, given a single unbatched observation obs 
+        """
+
         with torch.no_grad():
             a, _ = self.pi(obs.view(1,-1), deterministic, False)
             return a[0]
@@ -43,5 +56,6 @@ class ActorCritic(nn.Module):
         """
         returns the current value of the temperature parameter alpha without gradients
         """
+        
         with torch.no_grad():
             return self.alpha()

@@ -14,6 +14,8 @@ class Environment(ABC):
         self,
         params
     ):
+        self.rho = None
+        
         # Physical parameters
         self.wc = params["wc"]
         self.wb = params["wb"]
@@ -21,10 +23,7 @@ class Environment(ABC):
         self.Nc = params["Nc"]            # Initial cavity photon number
         self.Nb = params["Nb"]            # Number of TLS
 
-        self.Nc_max = (
-            (20 if self.Nb < 5 else 4 * self.Nb)
-            if not "Nc_max" in params else params["Nc_max"]
-        )
+        self.Nc_max = params["Nc_max"]
 
         self.kappa = params["kappa"]
         self.dt = params["dt"]
@@ -74,6 +73,51 @@ class Environment(ABC):
         pass
 
 # ======================================================================
+# ============================= RUNTIME ============================
+# ======================================================================
+
+    @abstractmethod
+    def evolve_state(self, u, duration):
+
+        pass
+
+    def step(self, u):
+        """Perform one physical evolution step and return measurements.
+
+        This is deliberately NOT a Gymnasium step: the Gym adapter owns
+        the observation/reward/termination interface.
+        """
+        if self.t >= self.tau - 1e-12:
+            raise RuntimeError("Charging episode already finished; call reset().")
+
+        duration = min(self.dt, self.tau - self.t)
+
+        self.evolve_state(u, duration)
+        self.t = min(self.t + duration, self.tau)
+
+        return {
+            "time": self.t,
+            "energy": self.energy(),
+            "ergotropy_symmetric": self.ergotropy(space = "symmetric"),
+            "ergotropy_full": self.ergotropy(space = "full"),
+            "purity": self.battery_purity(),
+            "joint_purity": self.purity(),
+            "photon_count": self.photon_count(),
+        }
+
+    def replay(self, u_values):
+        """Replay controls from the *current* physical state.
+
+        Call self.reset() before replay to start at t=0.
+        """
+        history = []
+
+        for u in u_values:
+            history.append(self.step(float(u)))
+
+        return history
+
+# ======================================================================
 # ============================= UTILS ============================
 # ======================================================================
 
@@ -87,7 +131,7 @@ class Environment(ABC):
 
     def ergotropy(self, space="symmetric"):
         """
-        Ergotropy of the reduced battery.
+        Ergotropy of the reduced battery
 
         space:
             'symmetric' : arbitrary unitaries in j = Nb/2 sector
@@ -111,19 +155,16 @@ class Environment(ABC):
         elif space == "full":
             passive_energy = self.wb * (1 - eigenvalues[0])
 
-        else:
-            raise ValueError("Unknown ergotropy space")
-
         return max(0.0, float(stored_energy - passive_energy))
 
 
-    def purity(self):
+    def battery_purity(self):
 
         rho_b = self.battery_state()
 
         return float(np.real((rho_b * rho_b).tr()))
 
-    def joint_purity(self):
+    def purity(self):
 
         return float(np.real((self.rho * self.rho).tr()))
 
@@ -131,40 +172,3 @@ class Environment(ABC):
 
         return float(np.real(qt.expect(self.n_photons_op, self.rho)))
 
-# ======================================================================
-# ============================= RUNTIME ============================
-# ======================================================================
-
-    @abstractmethod
-    def evolve_state(self, u, duration):
-
-        pass
-
-    def step(self, u):
-        """Evolve the system for one time step."""
-
-        if self.t >= self.tau:
-            raise RuntimeError("Simulation finished")
-
-        duration = min(self.dt, self.tau - self.t)
-
-        self.evolve_state(u, duration)
-        self.t = min(self.t + duration, self.tau)
-
-        return {
-            "time": self.t,
-            "energy": self.energy(),
-            "ergotropy_symmetric": self.ergotropy(space = "symmetric"),
-            "ergotropy_full": self.ergotropy(space = "full"),
-            "purity": self.purity(),
-            "joint_purity": self.joint_purity(),
-            "photon_count": self.photon_count(),
-        }
-
-    def replay(env, u_values):
-        history = []
-
-        for u in u_values:
-            history.append(env.step(float(u)))
-
-        return history

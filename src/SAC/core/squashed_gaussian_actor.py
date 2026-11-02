@@ -4,39 +4,33 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from src.SAC.core.rescale_inputs import RescaleInput
-from src.SAC.core.utils import mlp
+from SAC.utils.mlp import mlp
+from SAC.utils.rescale_inputs import RescaleInput
 
 
 class SquashedGaussianActor(nn.Module):
-    """
-    Class representing the policy, implemented with fully connected layers
-    that take the state as input, and outputs the averages and the covariance matrix
-    of a multivariate normal distribution. The action is then computed by sampling 
-    from this distribution, and passing the output thourgh a "squashing function" 
-    (a hyperbolic tangent, and then a rescaling to the desired range).
 
-    Args:
-        observation_space(gym.spaces): observation space of the RL environment. Must be 1D 
-            array        
-        action_space(gym.spaces): action space of the RL environment. Must be 1D 
-            array
-        hidden_sizes(tuple(int)): list of sizes of hidden layers
-        activation: activation function for all layers except for output
-        min_cov_eigen (float): used for stability when computing the covariance matrix of the multivariate
-            normal distribution.
-    """
-    def __init__(self, observation_space, action_space, hidden_sizes, activation,
-                min_cov_eigen=1.e-8):
+    def __init__(
+            self, 
+            observation_space, 
+            action_space, 
+            hidden_sizes, 
+            activation,
+            min_cov_eigen=1.e-8
+        ):
+
         super().__init__()
 
         #load state and action dimensions and bounds
         obs_dim = observation_space.shape[0]
         act_dim = action_space.shape[0]
+
         obs_lower_bounds = observation_space.low
         obs_upper_bounds = observation_space.high
+
         self.register_buffer("act_lower_bounds", torch.tensor(action_space.low, dtype=torch.float32))
         self.register_buffer("act_upper_bounds", torch.tensor(action_space.high, dtype=torch.float32))
+
         self.act_dim = act_dim
 
         #define the input layer that places data in a bound
