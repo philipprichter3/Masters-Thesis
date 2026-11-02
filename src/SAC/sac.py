@@ -11,10 +11,23 @@ from SAC.core.actor_critic import ActorCritic
 
 class SAC:
 
+# ======================================================================
+# ============================= INIT ============================
+# ======================================================================
+
     def __init__(
             self, 
             observation_space, 
             action_space,
+
+            c_start,
+            c_end,
+            c_mean,
+            c_width,
+
+            h_start,
+            h_end,
+            h_decay,
             
             use_cuda = False,
             gamma = 0.993,
@@ -22,8 +35,11 @@ class SAC:
             hidden_sizes = (512, 256),
             min_cov_eigen = 1.e-7,
             lr = 0.001,
-            lr_alpha = 0.003
+            lr_alpha = 0.003,
+
         ):
+
+        #initialize params
         
         self.device = torch.device(
             "cuda" if use_cuda
@@ -32,6 +48,17 @@ class SAC:
 
         self.gamma = gamma
         self.polyak = polyak
+
+        self.c_start = c_start
+        self.c_end = c_end
+        self.c_mean = c_mean
+        self.c_width = c_width
+
+        self.h_start = h_start
+        self.h_end = h_end
+        self.h_decay = h_decay
+
+        #initialize NNs
 
         self.actor_critic = ActorCritic(
             observation_space, 
@@ -46,20 +73,22 @@ class SAC:
         for p in chain(self.q1_target.parameters(), self.q2_target.parameters()):
             p.requires_grad_(False)
 
-        self.q_params = list(
-            chain(
-                self.actor_critic.q1.parameters(), 
-                self.actor_critic.q2.parameters()
-                )
-            )
-        
+        self.q_params = list(chain(
+            self.actor_critic.q1.parameters(),
+            self.actor_critic.q2.parameters(),
+        ))
+
+        #initialize optimizers
+
         self.q_optimizer = torch.optim.Adam(self.q_params, lr=lr)
 
         self.pi_optimizer = torch.optim.Adam(self.actor_critic.pi.parameters(), lr=lr)
 
         self.alpha_optimizer = torch.optim.SGD(self.actor_critic.alpha.parameters(), lr=lr_alpha)
 
-        self.target_entropy = -float(np.prod(action_space.shape))
+# ======================================================================
+# ============================= ACTION ============================
+# ======================================================================
 
     def act(self, observation, deterministic=False):
 
@@ -74,81 +103,97 @@ class SAC:
             deterministic=deterministic
         ).cpu().numpy().astype(np.float32)
 
-    def update(self, batch):
+# ======================================================================
+# ============================= UPDATE ============================
+# ======================================================================
 
-        batch = {k: v.to(self.device) for k, v in batch.items()}
+    def update(self, batch, *, reward_weights, target_entropy):
 
-        obs, act, rew = batch['obs'], batch['act'], batch['rew']
-        obs2, done = batch['next_obs'], batch['terminated']
+        batch = {key: value.to(self.device) for key, value in batch.items()}
 
-        # Bellman target: use target critics, not the live critics.
+        #retrieve data from batch
+        obs, act = batch["obs"], batch["act"]
+        next_obs, terminated = batch["next_obs"], batch["terminated"]
+        objectives = batch["objectives"]  
+
+        #apply weighting to objectives (blending function to energy vs ergotropy)
+        weights = torch.as_tensor(
+            reward_weights, device=self.device, dtype=objectives.dtype
+        )
+
+        reward = objectives @ weights
+
+
         with torch.no_grad():
 
-            next_act, next_logp = self.actor_critic.pi(obs2)
+            next_act, next_logp = self.actor_critic.pi(next_obs)
 
-            next_q = torch.minimum(self.q1_target(obs2, next_act),
-                                   self.q2_target(obs2, next_act))
-            
-            target_q = rew + self.gamma * (1 - done) * (
-                next_q - self.actor_critic.alpha() * next_logp)
+            next_q = torch.minimum(
+                self.q1_target(next_obs, next_act),
+                self.q2_target(next_obs, next_act),
+            )
 
+            #bellman function
+            target_q = reward + self.gamma * (1.0 - terminated) * (
+                next_q - self.actor_critic.alpha() * next_logp
+            )
+
+        #optimize critic functions
         q1 = self.actor_critic.q1(obs, act)
         q2 = self.actor_critic.q2(obs, act)
 
         q_loss = ((q1 - target_q).square() + (q2 - target_q).square()).mean()
 
         self.q_optimizer.zero_grad(set_to_none=True)
-
         q_loss.backward()
-
         self.q_optimizer.step()
 
-        # Freeze critic weights but still differentiate Q(s, pi(s)) wrt actions.
         for p in self.q_params:
-
             p.requires_grad_(False)
 
+        #optimize actor (policy) 
         pi_act, logp = self.actor_critic.pi(obs)
 
         q_pi = torch.minimum(
-            self.actor_critic.q1(obs, pi_act), 
-            self.actor_critic.q2(obs, pi_act)
+            self.actor_critic.q1(obs, pi_act),
+            self.actor_critic.q2(obs, pi_act),
         )
 
         pi_loss = (self.actor_critic.alpha().detach() * logp - q_pi).mean()
 
         self.pi_optimizer.zero_grad(set_to_none=True)
-
         pi_loss.backward()
-
         self.pi_optimizer.step()
 
         for p in self.q_params:
-
             p.requires_grad_(True)
 
-        # Temperature learns towards the target entropy.
-        alpha_loss = -(
-            self.actor_critic.alpha.log_alpha_val 
-            * (logp.detach() + self.target_entropy)
+        #optimize alpha (temperature)
+        with torch.no_grad():
+            _, logp_for_alpha = self.actor_critic.pi(obs)
+
+        alpha_loss = -self.actor_critic.alpha() * (
+            logp_for_alpha + float(target_entropy)
         ).mean()
 
         self.alpha_optimizer.zero_grad(set_to_none=True)
-
         alpha_loss.backward()
-
         self.alpha_optimizer.step()
 
-        # Polyak/EMA target updates.
+        #polyak average critic and target critic functions
         with torch.no_grad():
-            for live, target in [(self.actor_critic.q1, self.q1_target),
-                                 (self.actor_critic.q2, self.q2_target)]:
-                
+            for live, target in (
+                (self.actor_critic.q1, self.q1_target),
+                (self.actor_critic.q2, self.q2_target),
+            ):
                 for p, p_target in zip(live.parameters(), target.parameters()):
-                    p_target.mul_(self.polyak).add_(p, alpha=1 - self.polyak)
+                    p_target.mul_(self.polyak).add_(
+                        p, alpha=1.0 - self.polyak
+                    )
 
+        #return loss functions (should be decreasing with time, as they are being minimized)
         return {
-            'q_loss': float(q_loss.detach()),
-            'pi_loss': float(pi_loss.detach()),
-            'alpha': float(self.actor_critic.alpha().detach())
+            "q_loss": float(q_loss.detach()),
+            "pi_loss": float(pi_loss.detach()),
+            "alpha": float(self.actor_critic.alpha().detach()),
         }

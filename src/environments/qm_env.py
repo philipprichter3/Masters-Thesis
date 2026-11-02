@@ -10,10 +10,8 @@ class Environment(ABC):
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(
-        self,
-        params
-    ):
+    def __init__(self, params):
+        
         self.rho = None
         
         # Physical parameters
@@ -82,11 +80,7 @@ class Environment(ABC):
         pass
 
     def step(self, u):
-        """Perform one physical evolution step and return measurements.
 
-        This is deliberately NOT a Gymnasium step: the Gym adapter owns
-        the observation/reward/termination interface.
-        """
         if self.t >= self.tau - 1e-12:
             raise RuntimeError("Charging episode already finished; call reset().")
 
@@ -106,10 +100,7 @@ class Environment(ABC):
         }
 
     def replay(self, u_values):
-        """Replay controls from the *current* physical state.
 
-        Call self.reset() before replay to start at t=0.
-        """
         history = []
 
         for u in u_values:

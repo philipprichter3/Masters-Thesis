@@ -107,16 +107,10 @@ class GymEnvironment(gym.Env):
 
         info = dict(info) 
         info["multi_obj"] = multi_obj
-        info["delta_energy"] = dE
-        info["delta_ergotropy"] = dErg
 
-        reward = float(multi_obj[1])
         terminated = bool(self.qm_env.t >= self.qm_env.tau - 1e-12)
-        truncated = False
 
         return \
             self.observe(), \
-            reward, \
             terminated, \
-            truncated, \
             info

@@ -1,9 +1,74 @@
-"""Minimal environment interaction and SAC training loop."""
+
+import random
+
+import numpy as np
+import torch
 
 from SAC.environment.qm_env_wrapper import GymEnvironment
 from SAC.sac import SAC
 from SAC.utils.replay_buffer import ReplayBuffer
+from SAC.utils.schedules import objective_weights, target_entropy
 
+# ======================================================================
+# ============================= INIT TRAINING ============================
+# ======================================================================
+
+def init(
+        seed,
+        env : GymEnvironment,
+        hyper_params
+    ):
+
+    #init all rng
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    env.action_space.seed(seed)
+
+    #create agent
+    agent = SAC(
+        env.observation_space, 
+        env.action_space, 
+
+        c_start=hyper_params["C_START"],
+        c_end=hyper_params["C_END"],
+        c_width=hyper_params["C_WIDTH"],
+        c_mean= hyper_params["C_MEAN"],
+
+        h_start=hyper_params["H_START"],
+        h_end=hyper_params["H_END"],
+        h_decay=hyper_params["H_DECAY"],
+
+        use_cuda=hyper_params["USE_CUDA"],
+
+        gamma=hyper_params["GAMMA"],
+        polyak=hyper_params["POLYAK"],
+
+        hidden_sizes=hyper_params["HIDDEN_SIZES"],
+
+        min_cov_eigen=hyper_params["MIN_COV_EIGEN"],
+
+        lr = hyper_params["LR"],
+        lr_alpha= hyper_params["ALPHA_LR"]
+    )
+
+    #create buffer
+    memory = ReplayBuffer(
+        env.observation_space, 
+        env.action_space, 
+
+        capacity=hyper_params["REPLAY_MEMORY_SIZE"],
+
+        seed = seed
+    )
+
+    return agent, memory
+
+# ======================================================================
+# ============================= TRAINING ============================
+# ======================================================================
 
 def train(
         env : GymEnvironment, 
@@ -12,27 +77,11 @@ def train(
         steps=5_000, 
     ):
     
-    agent = SAC(
-        env.observation_space, 
-        env.action_space, 
-
-        use_cuda=hyper_params["USE_CUDA"],
-        gamma=hyper_params["GAMMA"],
-        polyak=hyper_params["POLYAK"],
-        hidden_sizes=hyper_params["HIDDEN_SIZES"],
-        min_cov_eigen=hyper_params["MIN_COV_EIGEN"],
-        lr = hyper_params["LR"],
-        lr_alpha= hyper_params["ALPHA_LR"]
+    agent, memory = init(
+        seed, 
+        env, 
+        hyper_params
     )
-
-    memory = ReplayBuffer(
-        env.observation_space, 
-        env.action_space, 
-
-        capacity=hyper_params["REPLAY_MEMORY_SIZE"]
-    )
-
-    obs, _ = env.reset(seed=seed)
 
     start_steps = hyper_params["INITIAL_RANDOM_STEPS"]
 
@@ -41,54 +90,41 @@ def train(
     update_after = hyper_params["UPDATE_AFTER"]
     update_every = hyper_params["UPDATE_EVERY"]
 
-    ep_return = 0.0
-    ep_length = 0
-    episodes = 0
+    obs, _ = env.reset(seed=seed)
 
     for t in range(steps):
 
-        action = (env.action_space.sample() 
-                  if t < start_steps
-                  else agent.act(obs))
-        
-        next_obs, reward, terminated, truncated, _ = env.step(action)
+        action = (
+            env.action_space.sample()
+            if t < start_steps
+            else agent.act(obs)
+        )
+
+        next_obs, terminated, info = env.step(action)
 
         memory.add(
-            obs, 
-            action, 
-            reward, 
-            next_obs, 
-            terminated
+            obs, action, info["multi_obj"], next_obs, terminated
         )
-        
-        ep_return += reward
-        ep_length += 1
         obs = next_obs
 
-        if t >= update_after and \
-            len(memory) >= batch_size and \
-            t % update_every == 0:
+        global_step = t + 1
 
-            losses = agent.update(
-                memory.sample(
-                    batch_size, 
-                    device=agent.device
+        if (
+            global_step > update_after
+            and global_step % update_every == 0
+            and len(memory) >= batch_size
+        ):
+            weights = objective_weights(global_step, hyper_params)
+            entropy = target_entropy(global_step, hyper_params)
+
+            for _ in range(update_every):
+                agent.update(
+                    memory.sample(batch_size, device=agent.device),
+                    reward_weights=weights,
+                    target_entropy=entropy,
                 )
-            )
 
-        if terminated or truncated:
-
-            episodes += 1
-
-            print(f'episode={episodes} steps={ep_length} '
-                  f'return={ep_return:.5f}' +
-                  (f' alpha={losses["alpha"]:.4f}' 
-                   if t >= update_after and len(memory) >= batch_size 
-                   else '')
-                )
-            
+        if terminated:
             obs, _ = env.reset()
-            ep_return = 0.0
-            ep_length = 0
 
     return agent
