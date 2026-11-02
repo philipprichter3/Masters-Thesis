@@ -1,4 +1,3 @@
-"""Minimal SAC learner using the uploaded ActorCritic networks."""
 
 from copy import deepcopy
 from itertools import chain
@@ -20,15 +19,6 @@ class SAC:
             observation_space, 
             action_space,
 
-            c_start,
-            c_end,
-            c_mean,
-            c_width,
-
-            h_start,
-            h_end,
-            h_decay,
-            
             use_cuda = False,
             gamma = 0.993,
             polyak = 0.995,
@@ -48,16 +38,7 @@ class SAC:
 
         self.gamma = gamma
         self.polyak = polyak
-
-        self.c_start = c_start
-        self.c_end = c_end
-        self.c_mean = c_mean
-        self.c_width = c_width
-
-        self.h_start = h_start
-        self.h_end = h_end
-        self.h_decay = h_decay
-
+        
         #initialize NNs
 
         self.actor_critic = ActorCritic(

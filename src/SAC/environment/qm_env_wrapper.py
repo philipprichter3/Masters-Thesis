@@ -105,6 +105,8 @@ class GymEnvironment(gym.Env):
         )
         self.last_u = u
 
+        #the multi_obj here is the objective array for the NN, and is later modified via weight(step)
+
         info = dict(info) 
         info["multi_obj"] = multi_obj
 
@@ -112,5 +114,7 @@ class GymEnvironment(gym.Env):
 
         return \
             self.observe(), \
+            0, \
             terminated, \
+            False, \
             info

@@ -32,15 +32,6 @@ def init(
         env.observation_space, 
         env.action_space, 
 
-        c_start=hyper_params["C_START"],
-        c_end=hyper_params["C_END"],
-        c_width=hyper_params["C_WIDTH"],
-        c_mean= hyper_params["C_MEAN"],
-
-        h_start=hyper_params["H_START"],
-        h_end=hyper_params["H_END"],
-        h_decay=hyper_params["H_DECAY"],
-
         use_cuda=hyper_params["USE_CUDA"],
 
         gamma=hyper_params["GAMMA"],
@@ -90,6 +81,15 @@ def train(
     update_after = hyper_params["UPDATE_AFTER"]
     update_every = hyper_params["UPDATE_EVERY"]
 
+    c_start=hyper_params["C_START"]
+    c_end=hyper_params["C_END"]
+    c_width=hyper_params["C_WIDTH"]
+    c_mean= hyper_params["C_MEAN"]
+
+    h_start=hyper_params["H_START"]
+    h_end=hyper_params["H_END"]
+    h_decay=hyper_params["H_DECAY"]
+
     obs, _ = env.reset(seed=seed)
 
     for t in range(steps):
@@ -100,7 +100,7 @@ def train(
             else agent.act(obs)
         )
 
-        next_obs, terminated, info = env.step(action)
+        next_obs, _, terminated, _, info = env.step(action)
 
         memory.add(
             obs, action, info["multi_obj"], next_obs, terminated
@@ -114,10 +114,24 @@ def train(
             and global_step % update_every == 0
             and len(memory) >= batch_size
         ):
-            weights = objective_weights(global_step, hyper_params)
-            entropy = target_entropy(global_step, hyper_params)
+            
+            weights = objective_weights(
+                global_step, 
+                c_start,
+                c_end,
+                c_width,
+                c_mean
+            )
+
+            entropy = target_entropy(
+                global_step, 
+                h_start,
+                h_end,
+                h_decay
+            )
 
             for _ in range(update_every):
+
                 agent.update(
                     memory.sample(batch_size, device=agent.device),
                     reward_weights=weights,

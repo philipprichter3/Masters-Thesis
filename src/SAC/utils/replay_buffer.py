@@ -1,4 +1,3 @@
-"""Fixed-capacity, uniform off-policy replay with two physical objectives."""
 
 import numpy as np
 import torch
@@ -61,7 +60,7 @@ class ReplayBuffer:
     def sample(self, batch_size, device="cpu"):
 
         idx = self.rng.integers(self.size, size=batch_size)
-        
+
         return {
             "obs": torch.as_tensor(self.obs[idx], device=device),
             "next_obs": torch.as_tensor(self.next_obs[idx], device=device),
