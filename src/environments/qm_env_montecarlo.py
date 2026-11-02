@@ -110,6 +110,7 @@ class MonteCarlo_Environment(Environment):
                     options={
                         "keep_runs_results": True,
                         "store_states": True,
+                        "progress_bar": False
                     },
                 )
 
