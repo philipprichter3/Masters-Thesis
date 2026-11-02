@@ -11,10 +11,24 @@ from SAC.core.actor_critic import ActorCritic
 
 class SAC:
 
-    def __init__(self, observation_space, action_space, *, hidden_sizes=(256, 256),
-                 gamma=0.99, polyak=0.995, lr=3e-4, device='cpu'):
+    def __init__(
+            self, 
+            observation_space, 
+            action_space,
+            
+            use_cuda = False,
+            gamma = 0.993,
+            polyak = 0.995,
+            hidden_sizes = (512, 256),
+            min_cov_eigen = 1.e-7,
+            lr = 0.001,
+            lr_alpha = 0.003
+        ):
         
-        self.device = torch.device(device)
+        self.device = torch.device(
+            "cuda" if use_cuda
+            else "cpu"
+        )
 
         self.gamma = gamma
         self.polyak = polyak
@@ -22,7 +36,8 @@ class SAC:
         self.actor_critic = ActorCritic(
             observation_space, 
             action_space,
-            hidden_sizes=hidden_sizes
+            hidden_sizes=hidden_sizes,
+            min_cov_eigen=min_cov_eigen
         ).to(self.device)
 
         self.q1_target = deepcopy(self.actor_critic.q1).to(self.device)
@@ -42,7 +57,7 @@ class SAC:
 
         self.pi_optimizer = torch.optim.Adam(self.actor_critic.pi.parameters(), lr=lr)
 
-        self.alpha_optimizer = torch.optim.Adam(self.actor_critic.alpha.parameters(), lr=lr)
+        self.alpha_optimizer = torch.optim.SGD(self.actor_critic.alpha.parameters(), lr=lr_alpha)
 
         self.target_entropy = -float(np.prod(action_space.shape))
 

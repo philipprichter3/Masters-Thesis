@@ -30,17 +30,16 @@ class ReplayBuffer:
         i = self.pos
 
         self.obs[i] = obs
+        self.next_obs[i] = next_obs
 
         self.act[i] = act
 
         self.rew[i] = rew
 
-        self.next_obs[i] = next_obs
-
         self.terminated[i] = float(terminated)
 
         self.pos = (i + 1) % self.capacity
-        
+
         self.size = min(self.size + 1, self.capacity)
 
     def sample(self, batch_size, device='cpu'):
@@ -49,9 +48,12 @@ class ReplayBuffer:
 
         return {
             'obs': torch.as_tensor(self.obs[idx], device=device),
-            'act': torch.as_tensor(self.act[idx], device=device),
-            'rew': torch.as_tensor(self.rew[idx], device=device),
             'next_obs': torch.as_tensor(self.next_obs[idx], device=device),
+
+            'act': torch.as_tensor(self.act[idx], device=device),
+
+            'rew': torch.as_tensor(self.rew[idx], device=device),
+
             'terminated': torch.as_tensor(self.terminated[idx], device=device),
         }
 
