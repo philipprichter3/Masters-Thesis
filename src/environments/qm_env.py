@@ -21,7 +21,11 @@ class Environment(ABC):
         self.Nc = params["Nc"]            # Initial cavity photon number
         self.Nb = params["Nb"]            # Number of TLS
 
-        self.Nc_max = params["Nc_max"]
+        self.Nc_max = \
+            params["Nc_max"] if "Nc_max" in params \
+            else \
+                20 if self.Nc < 5 \
+                else 4 * self.Nc
 
         self.kappa = params["kappa"]
         self.dt = params["dt"]

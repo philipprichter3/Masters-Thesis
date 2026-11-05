@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import trange
 
-from SAC.environment.qm_env_wrapper import GymEnvironment
+from environments.qm_env_wrapper import GymEnvironment
 from SAC.sac import SAC
 from SAC.utils.replay_buffer import ReplayBuffer
 from SAC.utils.schedules import objective_weights, target_entropy
