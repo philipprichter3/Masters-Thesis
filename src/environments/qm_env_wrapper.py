@@ -61,29 +61,6 @@ class GymEnvironment(gym.Env):
         return \
             self.observe(), \
             {}
-    
-# ======================================================================
-# ============================= OBSERVATION ============================
-# ======================================================================
-
-    def observe(self) -> np.ndarray:
-
-        observation = self.qm_env.observe()
-
-        return np.concatenate((
-            observation,
-            np.array([self.last_u, self.qm_env.t])
-        )).astype(np.float32)
-
-# ======================================================================
-# ============================= REWARD ============================
-# ======================================================================
-
-    def reward(self, info):
-
-        reward = self.qm_env.reward(info, self.objective)
-
-        return self.reward_coeff * reward
 
 # ======================================================================
 # ============================= RUNTIME ============================
@@ -117,3 +94,22 @@ class GymEnvironment(gym.Env):
             terminated, \
             False, \
             info
+
+# ======================================================================
+# ============================= UTILS ============================
+# ======================================================================
+
+    def observe(self) -> np.ndarray:
+
+        observation = self.qm_env.observe()
+
+        return np.concatenate((
+            observation,
+            np.array([self.last_u, self.qm_env.t])
+        )).astype(np.float32)
+
+    def reward(self, info):
+
+        reward = self.qm_env.reward(info, self.objective)
+
+        return self.reward_coeff * reward

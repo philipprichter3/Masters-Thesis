@@ -41,50 +41,6 @@ class MonteCarlo_Environment(Environment):
 
         self.t = 0.0
 
-# ============================================================
-# ================= DAEMONIC ERGOTROPY ========================
-# ============================================================
-
-    def _ergotropy_of_battery_state(self, rho_b, space="symmetric"):
-        """Ergotropy of an individual reduced battery state"""
-
-        eigenvalues = np.linalg.eigvalsh(rho_b.full())
-        eigenvalues = np.sort(
-            np.clip(eigenvalues.real, 0, None)
-        )[::-1]
-
-        eigenvalues /= eigenvalues.sum()
-
-        stored_energy = float(
-            np.real(qt.expect(self.Hb_bare, rho_b))
-        )
-
-        if space == "symmetric":
-            energies = self.wb * np.arange(self.Nb + 1)
-            passive_energy = np.dot(eigenvalues, energies)
-
-        elif space == "full":
-            passive_energy = self.wb * (1 - eigenvalues[0])
-
-        return max(0.0, float(stored_energy - passive_energy))
-
-    def daemonic_ergotropy(self, space="symmetric"):
-        """Average ergotropy of conditional battery states"""
-
-        ergotropies = []
-
-        for psi in self.psis:
-
-            rho_b = psi.ptrace(1)
-
-            W = self._ergotropy_of_battery_state(
-                rho_b, space=space
-            )
-
-            ergotropies.append(W)
-
-        return float(np.mean(ergotropies))
-
 # ======================================================================
 # ============================= RUNTIME ============================
 # ======================================================================
@@ -157,3 +113,55 @@ class MonteCarlo_Environment(Environment):
             )
 
         return result
+
+# ============================================================
+# ================= DAEMONIC ERGOTROPY ========================
+# ============================================================
+
+    def _ergotropy_of_battery_state(self, rho_b, space="symmetric"):
+        """Ergotropy of an individual reduced battery state"""
+
+        eigenvalues = np.linalg.eigvalsh(rho_b.full())
+        eigenvalues = np.sort(
+            np.clip(eigenvalues.real, 0, None)
+        )[::-1]
+
+        eigenvalues /= eigenvalues.sum()
+
+        stored_energy = float(
+            np.real(qt.expect(self.Hb_bare, rho_b))
+        )
+
+        if space == "symmetric":
+            energies = self.wb * np.arange(self.Nb + 1)
+            passive_energy = np.dot(eigenvalues, energies)
+
+        elif space == "full":
+            passive_energy = self.wb * (1 - eigenvalues[0])
+
+        return max(0.0, float(stored_energy - passive_energy))
+
+    def daemonic_ergotropy(self, space="symmetric"):
+        """Average ergotropy of conditional battery states"""
+
+        ergotropies = []
+
+        for psi in self.psis:
+
+            rho_b = psi.ptrace(1)
+
+            W = self._ergotropy_of_battery_state(
+                rho_b, space=space
+            )
+
+            ergotropies.append(W)
+
+        return float(np.mean(ergotropies))
+
+# ============================================================
+# ================= RL UTILS ========================
+# ============================================================
+
+    def observe(self):
+
+        return

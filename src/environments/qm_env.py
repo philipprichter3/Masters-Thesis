@@ -75,22 +75,6 @@ class Environment(ABC):
         pass
 
 # ======================================================================
-# ============================= OBSERVATIONS/REWARDS ============================
-# ======================================================================
-
-    @abstractmethod
-    def observe(self):
-
-        pass
-
-    def reward(self, info, objective = "ergotropy_symmetric"):
-
-        dE = info["d_energy"]
-        dErg = info["d_" + objective]
-
-        return np.array([dE, dErg], dtype=np.float32)
-
-# ======================================================================
 # ============================= RUNTIME ============================
 # ======================================================================
 
@@ -146,6 +130,23 @@ class Environment(ABC):
             history.append(self.step(float(u)))
 
         return history
+
+
+# ======================================================================
+# ============================= RL UTILS ============================
+# ======================================================================
+
+    @abstractmethod
+    def observe(self):
+
+        pass
+
+    def reward(self, info, objective = "ergotropy_symmetric"):
+
+        dE = info["d_energy"]
+        dErg = info["d_" + objective]
+
+        return np.array([dE, dErg], dtype=np.float32)
 
 # ======================================================================
 # ============================= UTILS ============================
