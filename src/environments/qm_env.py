@@ -101,6 +101,8 @@ class Environment(ABC):
 
     def replay(self, u_values):
 
+        self.reset()
+
         history = []
 
         for u in u_values:

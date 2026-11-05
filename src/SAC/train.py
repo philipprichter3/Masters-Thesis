@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 import torch
+from tqdm.auto import trange
 
 from SAC.environment.qm_env_wrapper import GymEnvironment
 from SAC.sac import SAC
@@ -92,7 +93,7 @@ def train(
 
     obs, _ = env.reset(seed=seed)
 
-    for t in range(steps):
+    for t in trange(steps, desc="SAC Training", unit="step"):
 
         action = (
             env.action_space.sample()
