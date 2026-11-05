@@ -104,7 +104,6 @@ class SAC:
 
         reward = objectives @ weights
 
-
         with torch.no_grad():
 
             next_act, next_logp = self.actor_critic.pi(next_obs)

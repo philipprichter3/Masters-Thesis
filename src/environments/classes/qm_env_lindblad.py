@@ -1,4 +1,5 @@
 
+import numpy as np
 import qutip as qt
 
 from environments.qm_env import Environment
@@ -16,6 +17,19 @@ class Lindblad_Environment(Environment):
 
         self.rho = qt.ket2dm(psi0)
         self.t = 0.0
+
+# ======================================================================
+# ============================= OBSERVATION ============================
+# ======================================================================
+
+    def observe(self):
+        
+        rho = self.rho.full().ravel()
+
+        return np.concatenate((
+            rho.real,
+            rho.imag,
+        )).astype(np.float32)
 
 # ======================================================================
 # ============================= RUNTIME ============================

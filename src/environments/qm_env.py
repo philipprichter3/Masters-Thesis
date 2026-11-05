@@ -75,6 +75,22 @@ class Environment(ABC):
         pass
 
 # ======================================================================
+# ============================= OBSERVATIONS/REWARDS ============================
+# ======================================================================
+
+    @abstractmethod
+    def observe(self):
+
+        pass
+
+    def reward(self, info, objective = "ergotropy_symmetric"):
+
+        dE = info["d_energy"]
+        dErg = info["d_" + objective]
+
+        return np.array([dE, dErg], dtype=np.float32)
+
+# ======================================================================
 # ============================= RUNTIME ============================
 # ======================================================================
 
@@ -90,16 +106,33 @@ class Environment(ABC):
 
         duration = min(self.dt, self.tau - self.t)
 
+        E_i = self.energy();
+        erg_sym_i = self.ergotropy(space = "symmetric")
+        erg_full_i = self.ergotropy(space = "full")
+
         self.evolve_state(u, duration)
+
+        E_f = self.energy();
+        erg_sym_f = self.ergotropy(space = "symmetric")
+        erg_full_f = self.ergotropy(space = "full")
+
         self.t = min(self.t + duration, self.tau)
 
         return {
             "time": self.t,
-            "energy": self.energy(),
-            "ergotropy_symmetric": self.ergotropy(space = "symmetric"),
-            "ergotropy_full": self.ergotropy(space = "full"),
-            "purity": self.battery_purity(),
-            "joint_purity": self.purity(),
+
+            "energy": E_f,
+            "d_energy": E_f - E_i,
+
+            "ergotropy_symmetric": erg_sym_f,
+            "d_ergotropy_symmetric": erg_sym_f - erg_sym_i,
+
+            "ergotropy_full": erg_full_f,
+            "d_ergotropy_full": erg_full_f - erg_full_i,
+
+            "battery_purity": self.battery_purity(),
+            "purity": self.purity(),
+
             "photon_count": self.photon_count(),
         }
 

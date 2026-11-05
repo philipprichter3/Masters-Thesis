@@ -104,7 +104,7 @@ def train(
         next_obs, _, terminated, _, info = env.step(action)
 
         memory.add(
-            obs, action, info["multi_obj"], next_obs, terminated
+            obs, action, info["objectives"], next_obs, terminated
         )
         obs = next_obs
 

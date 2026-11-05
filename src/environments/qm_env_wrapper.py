@@ -63,19 +63,27 @@ class GymEnvironment(gym.Env):
             {}
     
 # ======================================================================
-# ============================= OBSERVATIONS ============================
+# ============================= OBSERVATION ============================
 # ======================================================================
 
-    #this will be abs method called from qm_env in future
     def observe(self) -> np.ndarray:
 
-        rho = self.qm_env.rho.full().ravel()
+        observation = self.qm_env.observe()
 
         return np.concatenate((
-            rho.real,
-            rho.imag,
-            np.array([self.last_u, self.qm_env.t]),
+            observation,
+            np.array([self.last_u, self.qm_env.t])
         )).astype(np.float32)
+
+# ======================================================================
+# ============================= REWARD ============================
+# ======================================================================
+
+    def reward(self, info):
+
+        reward = self.qm_env.reward(info, self.objective)
+
+        return self.reward_coeff * reward
 
 # ======================================================================
 # ============================= RUNTIME ============================
@@ -90,30 +98,21 @@ class GymEnvironment(gym.Env):
         
         u = float(action_array[0])
 
-        E_i = self.qm_env.energy()
-        erg_i = self.qm_env.ergotropy(
-            space=self.objective.removeprefix("ergotropy_")
-        )
-
         info = self.qm_env.step(u)
 
-        dE = float(info["energy"] - E_i)
-        dErg = float(info[self.objective] - erg_i)
+        #the objectives here is the objective array for the NN, and is later modified via weight(step)
 
-        multi_obj = self.reward_coeff * np.array(
-            [dE, dErg], dtype=np.float32
-        )
+        info = dict(info)
+        info["objectives"] = self.reward(info)
+
+        observation = self.observe()
+
         self.last_u = u
-
-        #the multi_obj here is the objective array for the NN, and is later modified via weight(step)
-
-        info = dict(info) 
-        info["multi_obj"] = multi_obj
 
         terminated = bool(self.qm_env.t >= self.qm_env.tau - 1e-12)
 
         return \
-            self.observe(), \
+            observation, \
             0, \
             terminated, \
             False, \
