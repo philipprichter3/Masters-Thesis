@@ -10,7 +10,7 @@ class Environment(ABC):
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(self, params):
+    def __init__(self, params : dict):
         
         self.rho = None
         
@@ -141,7 +141,7 @@ class Environment(ABC):
 
         pass
 
-    def reward(self, info, objective = "ergotropy_symmetric"):
+    def reward(self, info : dict, objective : str = "ergotropy_symmetric"):
 
         dE = info["d_energy"]
         dErg = info["d_" + objective]
@@ -160,7 +160,7 @@ class Environment(ABC):
 
         return float(np.real(qt.expect(self.Hb, self.rho)))
 
-    def ergotropy(self, space="symmetric"):
+    def ergotropy(self, space : str = "symmetric"):
         """
         Ergotropy of the reduced battery
 

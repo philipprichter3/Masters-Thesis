@@ -11,7 +11,7 @@ class GymEnvironment(gym.Env):
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(self, qm_env : Environment, params):
+    def __init__(self, qm_env : Environment, params : dict):
 
         self.min_u = params["min_u"]
         self.max_u = params["max_u"]
@@ -50,7 +50,7 @@ class GymEnvironment(gym.Env):
             dtype = np.float32
         )
 
-    def reset(self, *, seed=None, options=None):
+    def reset(self, *, seed = None):
 
         super().reset(seed=seed)
 
@@ -108,7 +108,7 @@ class GymEnvironment(gym.Env):
             np.array([self.last_u, self.qm_env.t])
         )).astype(np.float32)
 
-    def reward(self, info):
+    def reward(self, info : dict):
 
         reward = self.qm_env.reward(info, self.objective)
 
