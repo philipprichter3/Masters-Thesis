@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 
-from SAC.core.alpha import Alpha
-from SAC.core.qfunction import QFunction
-from SAC.core.squashed_gaussian_actor import SquashedGaussianActor
+from sac.core.alpha import Alpha
+from sac.core.qfunction import QFunction
+from sac.core.squashed_gaussian_actor import SquashedGaussianActor
 
 
 class ActorCritic(nn.Module):

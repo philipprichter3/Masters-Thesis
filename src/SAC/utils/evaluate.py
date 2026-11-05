@@ -2,7 +2,7 @@
 import numpy as np
 
 from environments.qm_env_wrapper import GymEnvironment
-from SAC.sac import SAC
+from sac.sac import SAC
 
 
 def get_control_sequence(env : GymEnvironment, agent : SAC, seed = 0):

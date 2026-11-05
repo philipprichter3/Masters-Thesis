@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from SAC.utils.mlp import mlp
-from SAC.utils.rescale_inputs import RescaleInput
+from sac.utils.mlp import mlp
+from sac.utils.rescale_inputs import RescaleInput
 
 
 class QFunction(nn.Module):

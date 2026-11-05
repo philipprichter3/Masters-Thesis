@@ -5,7 +5,7 @@ from itertools import chain
 import numpy as np
 import torch
 
-from SAC.core.actor_critic import ActorCritic
+from sac.core.actor_critic import ActorCritic
 
 
 class SAC:

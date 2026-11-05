@@ -6,9 +6,9 @@ import torch
 from tqdm.auto import trange
 
 from environments.qm_env_wrapper import GymEnvironment
-from SAC.sac import SAC
-from SAC.utils.replay_buffer import ReplayBuffer
-from SAC.utils.schedules import objective_weights, target_entropy
+from sac.sac import SAC
+from sac.utils.replay_buffer import ReplayBuffer
+from sac.utils.schedules import objective_weights, target_entropy
 
 # ======================================================================
 # ============================= INIT TRAINING ============================
@@ -17,7 +17,7 @@ from SAC.utils.schedules import objective_weights, target_entropy
 def init(
         seed,
         env : GymEnvironment,
-        hyper_params
+        hyper_params : dict
     ):
 
     #init all rng
@@ -64,7 +64,7 @@ def init(
 
 def train(
         env : GymEnvironment, 
-        hyper_params,
+        hyper_params : dict,
         seed = 0,
         steps=5_000, 
     ):
