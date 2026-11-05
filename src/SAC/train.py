@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import trange
 
+from debug.sac_training_plot import LiveTrainingPlot
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 from sac.utils.replay_buffer import ReplayBuffer
@@ -68,12 +69,16 @@ def train(
         seed = 0,
         steps=5_000, 
     ):
+
+    #create agent and replay buffer
     
     agent, memory = init(
         seed, 
         env, 
         hyper_params
     )
+
+    #init all necessary params
 
     start_steps = hyper_params["INITIAL_RANDOM_STEPS"]
 
@@ -92,6 +97,15 @@ def train(
     h_decay=hyper_params["H_DECAY"]
 
     obs, _ = env.reset(seed=seed)
+
+    #init logging tools
+
+    agent_log = {}
+
+    log_every = hyper_params["LOG_EVERY"]
+    log_plotter = LiveTrainingPlot()
+
+    #training loop
 
     for t in trange(steps, desc="SAC Training", unit="step"):
 
@@ -133,7 +147,7 @@ def train(
 
             for _ in range(update_every):
 
-                agent.update(
+                agent_log = agent.update(
                     memory.sample(batch_size, device=agent.device),
                     reward_weights=weights,
                     target_entropy=entropy,
@@ -141,5 +155,11 @@ def train(
 
         if terminated:
             obs, _ = env.reset()
+
+        if(t % log_every == 0):
+
+            log_plotter.log(t, agent_log)
+
+    log_plotter.update()
 
     return agent

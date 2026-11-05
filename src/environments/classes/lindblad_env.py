@@ -13,7 +13,7 @@ class Lindblad_Environment(Environment):
 
     def reset(self):
 
-        psi0 = self._init_state()
+        psi0 = self.init_state()
 
         self.rho = qt.ket2dm(psi0)
         self.t = 0.0
@@ -22,7 +22,7 @@ class Lindblad_Environment(Environment):
 # ============================= RUNTIME ============================
 # ======================================================================
 
-    def _evolve_state(self, u, duration):
+    def evolve_state(self, u, duration):
         """Lindblad evolution"""
 
         H = self.H0 + u * self.Hint
