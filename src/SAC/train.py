@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import trange
 
-from debug.sac_training_plot import LiveTrainingPlot
+from debug.log import Log
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 from sac.utils.replay_buffer import ReplayBuffer
@@ -44,7 +44,7 @@ def init(
         min_cov_eigen=hyper_params["MIN_COV_EIGEN"],
 
         lr = hyper_params["LR"],
-        lr_alpha= hyper_params["ALPHA_LR"]
+        lr_alpha = hyper_params["ALPHA_LR"],
     )
 
     #create buffer
@@ -68,7 +68,7 @@ def train(
         hyper_params : dict,
         seed = 0,
         steps=5_000, 
-    ):
+    ) -> SAC:
 
     #create agent and replay buffer
     
@@ -98,12 +98,13 @@ def train(
 
     obs, _ = env.reset(seed=seed)
 
-    #init logging tools
+    #logging
 
-    agent_log = {}
-
-    log_every = hyper_params["LOG_EVERY"]
-    log_plotter = LiveTrainingPlot()
+    current_log = {}
+    log = Log(
+        create_plot = hyper_params["PLOT_LOG"], 
+        update_every = hyper_params["LOG_EVERY"]
+    )
 
     #training loop
 
@@ -147,7 +148,7 @@ def train(
 
             for _ in range(update_every):
 
-                agent_log = agent.update(
+                current_log = agent.update(
                     memory.sample(batch_size, device=agent.device),
                     reward_weights=weights,
                     target_entropy=entropy,
@@ -156,10 +157,6 @@ def train(
         if terminated:
             obs, _ = env.reset()
 
-        if(t % log_every == 0):
-
-            log_plotter.log(t, agent_log)
-
-    log_plotter.update()
+        log.log(global_step, **current_log)
 
     return agent

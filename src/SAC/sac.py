@@ -20,13 +20,16 @@ class SAC:
             action_space,
 
             use_cuda = False,
+
             gamma = 0.993,
             polyak = 0.995,
+
             hidden_sizes = (512, 256),
+
             min_cov_eigen = 1.e-7,
+            
             lr = 0.001,
             lr_alpha = 0.003,
-
         ):
 
         #initialize params
@@ -171,9 +174,30 @@ class SAC:
                         p, alpha=1.0 - self.polyak
                     )
 
-        #return loss functions (should be decreasing with time, as they are being minimized)
         return {
-            "q_loss": float(q_loss.detach()),
-            "pi_loss": float(pi_loss.detach()),
-            "alpha": float(self.actor_critic.alpha().detach()),
+            # Optimization
+            "q_loss": q_loss.detach().item(),
+            "pi_loss": pi_loss.detach().item(),
+            "alpha_loss": alpha_loss.detach().item(),
+            "alpha": self.actor_critic.alpha().detach().item(),
+
+            # Critic diagnostics
+            "q1": q1.detach().mean().item(),
+            "q2": q2.detach().mean().item(),
+            "q_diff": (q1.detach() - q2.detach()).abs().mean().item(),
+            "target_q": target_q.detach().mean().item(),
+            "td_error": (
+                0.5 * (
+                    (q1.detach() - target_q).abs() +
+                    (q2.detach() - target_q).abs()
+                )
+            ).mean().item(),
+
+            # Rewards
+            "reward": reward.detach().mean().item(),
+
+            # Policy diagnostics
+            "q_pi": q_pi.detach().mean().item(),
+            "entropy": -logp.detach().mean().item(),
+            "target_entropy": float(target_entropy),
         }
