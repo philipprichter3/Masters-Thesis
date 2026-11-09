@@ -15,7 +15,7 @@ class Log:
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(self, create_plot = False, update_every = 200, key_filters = {}):
+    def __init__(self, create_plot = False, update_every = 200, key_filters = None):
 
         self.steps = []
 
