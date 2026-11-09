@@ -1,6 +1,7 @@
 
 from copy import deepcopy
 from itertools import chain
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -41,6 +42,9 @@ class SAC:
 
         self.gamma = gamma
         self.polyak = polyak
+
+        self.hidden_sizes = tuple(hidden_sizes)
+        self.min_cov_eigen = float(min_cov_eigen)
         
         #initialize NNs
 
@@ -201,3 +205,53 @@ class SAC:
             "entropy": -logp.detach().mean().item(),
             "target_entropy": float(target_entropy),
         }
+
+# ======================================================================
+# ============================= SERIALIZATION ============================
+# ======================================================================
+
+    def save(self, path):
+
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        torch.save(
+            {
+                "hidden_sizes": self.hidden_sizes,
+                "min_cov_eigen": self.min_cov_eigen,
+                "policy": {
+                    name: tensor.detach().cpu()
+                    for name, tensor in self.actor_critic.pi.state_dict().items()
+                },
+            },
+            path,
+        )
+
+    @classmethod
+    def load(
+        cls, 
+        path, 
+        observation_space, 
+        action_space, 
+        *, 
+        use_cuda=False
+    ):
+
+        checkpoint = torch.load(
+            path, 
+            map_location="cpu",
+            weights_only=True
+        )
+
+        agent = cls(
+            observation_space,
+            action_space,
+            use_cuda=use_cuda,
+            hidden_sizes=tuple(checkpoint["hidden_sizes"]),
+            min_cov_eigen=float(checkpoint["min_cov_eigen"]),
+        )
+
+        agent.actor_critic.pi.load_state_dict(checkpoint["policy"])
+        agent.actor_critic.pi.eval()
+        
+        return agent

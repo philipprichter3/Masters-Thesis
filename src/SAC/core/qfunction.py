@@ -1,12 +1,12 @@
 import numpy as np
 import torch
-from torch import nn
 
 from sac.utils.mlp import mlp
 from sac.utils.rescale_inputs import RescaleInput
+from serialization.serializableNN import Serializable__NN
 
 
-class QFunction(nn.Module):
+class QFunction(Serializable__NN):
 
     def __init__(
             self, 
