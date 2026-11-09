@@ -175,7 +175,7 @@ def train(
 
     if serialize:
 
-        directory = save_experiment(
+        _ = save_experiment(
             agent,
             env_params=env_params,
             hyper_params=hyper_params,
