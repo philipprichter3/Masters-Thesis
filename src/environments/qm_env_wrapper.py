@@ -50,17 +50,14 @@ class GymEnvironment(gym.Env):
             dtype = np.float32
         )
 
-    def reset(self, *, seed = None):
+    def reset(self, *, seed = None, options = None):
 
         super().reset(seed=seed)
 
         self.qm_env.reset()
-
         self.last_u = self.min_u
 
-        return \
-            self.observe(), \
-            {}
+        return self.observe(), {}
 
 # ======================================================================
 # ============================= RUNTIME ============================
@@ -68,32 +65,26 @@ class GymEnvironment(gym.Env):
 
     def step(self, action):
 
-        action_array = np.asarray(action, dtype=np.float32).reshape(-1)
+        action_array = np.asarray(
+            action, dtype=np.float32
+        ).reshape(-1)
 
-        if not self.action_space.contains(action):
-            raise Exception(f"Action {action} out of bound")  # noqa: TRY002
-        
+        if not self.action_space.contains(action_array):
+            raise ValueError(f"Action {action} out of bounds")
+
         u = float(action_array[0])
 
-        info = self.qm_env.step(u)
-
-        #the objectives here is the objective array for the NN, and is later modified via weight(step)
-
-        info = dict(info)
+        info = dict(self.qm_env.step(u))
         info["objectives"] = self.reward(info)
 
+        self.last_u = u
         observation = self.observe()
 
-        self.last_u = u
+        terminated = bool(
+            self.qm_env.t >= self.qm_env.tau - 1e-12
+        )
 
-        terminated = bool(self.qm_env.t >= self.qm_env.tau - 1e-12)
-
-        return \
-            observation, \
-            0, \
-            terminated, \
-            False, \
-            info
+        return observation, 0.0, terminated, False, info
 
 # ======================================================================
 # ============================= UTILS ============================
