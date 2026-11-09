@@ -160,33 +160,37 @@ class Environment(ABC):
 
         return float(np.real(qt.expect(self.Hb, self.rho)))
 
-    def ergotropy(self, space : str = "symmetric"):
-        """
-        Ergotropy of the reduced battery
 
-        space:
-            'symmetric' : arbitrary unitaries in j = Nb/2 sector
-            'full'      : arbitrary unitaries on all Nb TLS
+    def ergotropy(self, space: str = "symmetric", rho_b=None):
+        """
+        ergotropy of a battery state
+
+        space : str
+            'symmetric': unitaries in the j = Nb/2 sector.
+            'full': arbitrary unitaries on all Nb TLS.
         """
 
-        rho_b = self.battery_state()
+        if rho_b is None:
+            rho_b = self.battery_state()
 
         eigenvalues = np.linalg.eigvalsh(rho_b.full())
-        eigenvalues = np.sort(
-            np.clip(eigenvalues.real, 0, None)
-        )[::-1]
+        eigenvalues = np.sort(np.clip(eigenvalues.real, 0, None))[::-1]
         eigenvalues /= eigenvalues.sum()
 
-        stored_energy = self.energy()
+        stored_energy = float(np.real(qt.expect(self.Hb_bare, rho_b)))
 
         if space == "symmetric":
-            energies = self.wb * np.arange(self.Nb + 1)
-            passive_energy = np.dot(eigenvalues, energies)
+            passive_energy = self.wb * np.dot(
+                eigenvalues, np.arange(self.Nb + 1)
+            )
 
         elif space == "full":
             passive_energy = self.wb * (1 - eigenvalues[0])
 
-        return max(0.0, float(stored_energy - passive_energy))
+        else:
+            raise ValueError(f"Unknown space: {space}")
+
+        return max(0.0, stored_energy - passive_energy)
 
 
     def battery_purity(self):
