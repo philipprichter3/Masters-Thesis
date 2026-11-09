@@ -4,10 +4,9 @@ from torch import nn
 from sac.core.alpha import Alpha
 from sac.core.qfunction import QFunction
 from sac.core.squashed_gaussian_actor import SquashedGaussianActor
-from serialization.serializable_NN import Serializable__NN
 
 
-class ActorCritic(Serializable__NN):
+class ActorCritic(nn.Module):
 
     def __init__(
             self, 

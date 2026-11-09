@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+#currently not used
 
 class Serializable__NN(nn.Module):
 

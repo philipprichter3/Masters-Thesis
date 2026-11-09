@@ -216,42 +216,37 @@ class SAC:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         torch.save(
-            {
-                "hidden_sizes": self.hidden_sizes,
-                "min_cov_eigen": self.min_cov_eigen,
-                "policy": {
-                    name: tensor.detach().cpu()
-                    for name, tensor in self.actor_critic.pi.state_dict().items()
-                },
-            },
-            path,
+            self.actor_critic.pi.state_dict(),
+            path
         )
+
 
     @classmethod
     def load(
-        cls, 
-        path, 
-        observation_space, 
-        action_space, 
-        *, 
+        cls,
+        path,
+        observation_space,
+        action_space,
+        *,
+        hidden_sizes,
         use_cuda=False
     ):
-
-        checkpoint = torch.load(
-            path, 
-            map_location="cpu",
-            weights_only=True
-        )
 
         agent = cls(
             observation_space,
             action_space,
+            
             use_cuda=use_cuda,
-            hidden_sizes=tuple(checkpoint["hidden_sizes"]),
-            min_cov_eigen=float(checkpoint["min_cov_eigen"]),
+            hidden_sizes=hidden_sizes
         )
 
-        agent.actor_critic.pi.load_state_dict(checkpoint["policy"])
+        state_dict = torch.load(
+            path,
+            map_location="cpu",
+            weights_only=True
+        )
+
+        agent.actor_critic.pi.load_state_dict(state_dict)
         agent.actor_critic.pi.eval()
-        
+
         return agent

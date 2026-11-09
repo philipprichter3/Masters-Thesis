@@ -8,8 +8,9 @@ from tqdm.auto import trange
 from debug.log import Log
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
-from sac.utils.replay_buffer import ReplayBuffer
-from sac.utils.schedules import objective_weights, target_entropy
+from serialization.serialize_experiment import save_experiment
+from utils.replay_buffer import ReplayBuffer
+from utils.schedules import objective_weights, target_entropy
 
 # ======================================================================
 # ============================= INIT TRAINING ============================
@@ -20,14 +21,6 @@ def init(
         env : GymEnvironment,
         hyper_params : dict
     ):
-
-    #init all rng
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-    env.action_space.seed(seed)
 
     #create agent
     agent = SAC(
@@ -66,9 +59,23 @@ def init(
 def train(
         env : GymEnvironment, 
         hyper_params : dict,
-        seed = 0,
-        steps=5_000, 
+        seed = 0,        
+        steps=5_000,
+        *,        
+        env_params: dict | None = None,
+        serialize: bool = False,
     ) -> SAC:
+
+    #init all rng
+
+    random.seed(seed)
+    np.random.seed(seed)
+
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    env.action_space.seed(seed)
 
     #create agent and replay buffer
     
@@ -159,4 +166,19 @@ def train(
 
         log.log(global_step, **current_log)
 
+    #serialization
+
+    if serialize:
+
+        directory = save_experiment(
+            agent,
+            env_params=env_params,
+            hyper_params=hyper_params,
+            seed=seed,
+            steps=steps,
+        )
+
+        agent.experiment_dir = directory
+
     return agent
+

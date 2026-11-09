@@ -4,12 +4,11 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from sac.utils.mlp import mlp
-from sac.utils.rescale_inputs import RescaleInput
-from serialization.serializableNN import Serializable__NN
+from utils.mlp import mlp
+from utils.rescale_inputs import RescaleInput
 
 
-class SquashedGaussianActor(Serializable__NN):
+class SquashedGaussianActor(nn.Module):
 
     def __init__(
             self, 

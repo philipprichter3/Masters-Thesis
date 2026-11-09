@@ -1,10 +1,8 @@
 import torch
 from torch import nn
 
-from serialization.serializable_NN import Serializable__NN
 
-
-class Alpha(Serializable__NN):
+class Alpha(nn.Module):
 
     def __init__(self):
         
