@@ -118,6 +118,8 @@ class Environment(ABC):
             "purity": self.purity(),
 
             "photon_count": self.photon_count(),
+
+            "action": u,
         }
 
     def replay(self, u_values):

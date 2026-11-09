@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import trange
 
-from debug.log import Log
+from debug.training_logger import TrainingLogger
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 from serialization.serialize_experiment import save_experiment
@@ -107,11 +107,7 @@ def train(
 
     #logging
 
-    current_log = {}
-    log = Log(
-        create_plot = hyper_params["PLOT_LOG"], 
-        update_every = hyper_params["LOG_EVERY"]
-    )
+    logger = TrainingLogger(hyper_params)
 
     #training loop
 
@@ -125,9 +121,13 @@ def train(
 
         next_obs, _, terminated, _, info = env.step(action)
 
+        logger.record_step(info)
+
         memory.add(
             obs, action, info["objectives"], next_obs, terminated
         )
+
+
         obs = next_obs
 
         global_step = t + 1
@@ -155,16 +155,21 @@ def train(
 
             for _ in range(update_every):
 
-                current_log = agent.update(
+                metrics = agent.update(
                     memory.sample(batch_size, device=agent.device),
                     reward_weights=weights,
                     target_entropy=entropy,
                 )
 
+                logger.record_update(metrics)
+
         if terminated:
+
             obs, _ = env.reset()
 
-        log.log(global_step, **current_log)
+            logger.end_episode(global_step)
+
+        logger.update(global_step)
 
     #serialization
 
@@ -177,8 +182,6 @@ def train(
             seed=seed,
             steps=steps,
         )
-
-        agent.experiment_dir = directory
 
     return agent
 

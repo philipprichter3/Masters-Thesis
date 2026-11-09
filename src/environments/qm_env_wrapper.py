@@ -75,6 +75,7 @@ class GymEnvironment(gym.Env):
         u = float(action_array[0])
 
         info = dict(self.qm_env.step(u))
+
         info["objectives"] = self.reward(info)
 
         self.last_u = u
