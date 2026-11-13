@@ -33,9 +33,17 @@ class Lindblad_Environment(Environment):
             self.rho,
             [0.0, duration],
             c_ops=c_ops,
+            options={
+                "matrix_form": True,
+                
+                "store_states": False,
+                "store_final_state": True,
+            }
         )
 
-        self.rho = result.states[-1]
+        self.rho = result.final_state
+
+        return result.states
         
 # ======================================================================
 # ============================= RL UTILS ============================

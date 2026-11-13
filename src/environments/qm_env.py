@@ -86,7 +86,7 @@ class Environment(ABC):
     def step(self, u):
 
         if self.t >= self.tau - 1e-12:
-            raise RuntimeError("Charging episode already finished; call reset().")
+            print("Charging episode already finished; call reset().")
 
         duration = min(self.dt, self.tau - self.t)
 
@@ -94,33 +94,21 @@ class Environment(ABC):
         erg_sym_i = self.ergotropy(space = "symmetric")
         erg_full_i = self.ergotropy(space = "full")
 
-        self.evolve_state(u, duration)
-
-        E_f = self.energy();
-        erg_sym_f = self.ergotropy(space = "symmetric")
-        erg_full_f = self.ergotropy(space = "full")
+        _ = self.evolve_state(u, duration)
 
         self.t = min(self.t + duration, self.tau)
 
-        return {
-            "time": self.t,
+        info = self.get_info(self.rho)
 
-            "energy": E_f,
-            "d_energy": E_f - E_i,
+        info["d_energy"] = info["energy"] - E_i
 
-            "ergotropy_symmetric": erg_sym_f,
-            "d_ergotropy_symmetric": erg_sym_f - erg_sym_i,
+        info["d_ergotropy_symmetric"] = info["ergotropy_symmetric"] - erg_sym_i
+        info["d_ergotropy_full"] = info["ergotropy_full"] - erg_full_i
 
-            "ergotropy_full": erg_full_f,
-            "d_ergotropy_full": erg_full_f - erg_full_i,
+        info["time"] = self.t
+        info["action"] = u
 
-            "battery_purity": self.battery_purity(),
-            "purity": self.purity(),
-
-            "photon_count": self.photon_count(),
-
-            "action": u,
-        }
+        return info
 
     def replay(self, u_values):
 
@@ -132,7 +120,6 @@ class Environment(ABC):
             history.append(self.step(float(u)))
 
         return history
-
 
 # ======================================================================
 # ============================= RL UTILS ============================
@@ -154,16 +141,44 @@ class Environment(ABC):
 # ============================= UTILS ============================
 # ======================================================================
 
-    def battery_state(self):
+    def get_info(self, state):
 
-        return self.rho.ptrace(1)
+        rho = qt.ket2dm(state) if state.isket else state
 
-    def energy(self):
+        return {
+            "energy": self.energy(rho),
 
-        return float(np.real(qt.expect(self.Hb, self.rho)))
+            "ergotropy_symmetric": self.ergotropy(
+                space="symmetric", rho = rho
+            ),
+
+            "ergotropy_full": self.ergotropy(
+                space="full", rho = rho
+            ),
+
+            "battery_purity": self.battery_purity(rho),
+
+            "purity": self.purity(rho),
+
+            "photon_count": self.photon_count(rho),
+        }
+
+    def battery_state(self, rho = None):
+
+        if rho is None:
+            rho = self.rho
+
+        return rho.ptrace(1)
+
+    def energy(self, rho = None):
+
+        if rho is None:
+            rho = self.rho
+
+        return float(np.real(qt.expect(self.Hb, rho)))
 
 
-    def ergotropy(self, space: str = "symmetric", rho_b=None):
+    def ergotropy(self, space: str = "symmetric", rho = None):
         """
         ergotropy of a battery state
 
@@ -172,8 +187,10 @@ class Environment(ABC):
             'full': arbitrary unitaries on all Nb TLS.
         """
 
-        if rho_b is None:
-            rho_b = self.battery_state()
+        if rho is None:
+            rho = self.rho
+
+        rho_b = self.battery_state(rho)
 
         eigenvalues = np.linalg.eigvalsh(rho_b.full())
         eigenvalues = np.sort(np.clip(eigenvalues.real, 0, None))[::-1]
@@ -195,17 +212,26 @@ class Environment(ABC):
         return max(0.0, stored_energy - passive_energy)
 
 
-    def battery_purity(self):
+    def battery_purity(self, rho = None):
 
-        rho_b = self.battery_state()
+        if rho is None:
+            rho = self.rho
+
+        rho_b = self.battery_state(rho)
 
         return float(np.real((rho_b * rho_b).tr()))
 
-    def purity(self):
+    def purity(self, rho = None):
+
+        if rho is None:
+            rho = self.rho
 
         return float(np.real((self.rho * self.rho).tr()))
 
-    def photon_count(self):
+    def photon_count(self, rho = None):
+
+        if rho is None:
+            rho = self.rho
 
         return float(np.real(qt.expect(self.n_photons_op, self.rho)))
 

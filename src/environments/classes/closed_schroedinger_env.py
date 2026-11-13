@@ -31,11 +31,17 @@ class CLosed_Schroedinger_Env(Environment):
             H,
             self.psi,
             [0.0, duration],
+            options={
+                "store_states": False,
+                "store_final_state": True,
+            }
         )
 
-        self.psi = result.states[-1]
+        self.psi = result.final_state
 
         self.rho = qt.ket2dm(self.psi)
+
+        return result.states
 
 # ============================================================
 # ================= RL UTILS ========================
