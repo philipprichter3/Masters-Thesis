@@ -130,6 +130,6 @@ class MonteCarlo_Environment(Environment):
 # ================= RL UTILS ========================
 # ============================================================
 
-    def observe(self):
+    def observe(self, type : str = "default"):
 
         return

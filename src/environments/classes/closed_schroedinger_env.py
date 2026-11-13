@@ -41,7 +41,7 @@ class CLosed_Schroedinger_Env(Environment):
 # ================= RL UTILS ========================
 # ============================================================
 
-    def observe(self):
+    def observe(self, type : str = "default"):
 
         psi = self.psi.full().ravel()
 

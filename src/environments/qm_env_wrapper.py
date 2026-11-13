@@ -16,8 +16,10 @@ class GymEnvironment(gym.Env):
         self.min_u = params["min_u"]
         self.max_u = params["max_u"]
 
-        self.objective = params["objective"]
+        self.objective = params["reward"]
         self.reward_coeff = params["reward_coeff"]
+
+        self.observation = params["observation"]
 
         self.qm_env = qm_env
 
@@ -93,7 +95,7 @@ class GymEnvironment(gym.Env):
 
     def observe(self) -> np.ndarray:
 
-        observation = self.qm_env.observe()
+        observation = self.qm_env.observe(self.observation)
 
         return np.concatenate((
             observation,

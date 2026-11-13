@@ -41,11 +41,46 @@ class Lindblad_Environment(Environment):
 # ============================= RL UTILS ============================
 # ======================================================================
 
-    def observe(self):
-        
+    def observe(self, type : str = "default"):
+
+        if type == "reduced":
+
+            return self.observe_reduced()
+
+        if type == "diagonal":
+
+            return self.observe_diag()
+
+        return self.observe_full()
+
+
+    def observe_full(self):
+
         rho = self.rho.full().ravel()
 
         return np.concatenate((
             rho.real,
             rho.imag,
         )).astype(np.float32)
+
+    def observe_reduced(self):
+
+        rho = self.battery_state().full().ravel()
+
+        return np.concatenate((
+            rho.real, 
+            rho.imag
+        )).astype(np.float32)
+
+    def observe_diag(self):
+
+        rho = self.rho.full().ravel()
+
+        diag_elements = np.diag(rho)
+
+        return np.concatenate((
+            diag_elements.real, 
+            diag_elements.imag
+        )).astype(np.float32)
+
+    

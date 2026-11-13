@@ -139,7 +139,7 @@ class Environment(ABC):
 # ======================================================================
 
     @abstractmethod
-    def observe(self):
+    def observe(self, type : str = "default"):
 
         pass
 
