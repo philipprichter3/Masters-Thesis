@@ -5,6 +5,7 @@ from pathlib import Path
 
 import torch
 
+from environments.classes.closed_schroedinger_env import CLosed_Schroedinger_Env
 from environments.classes.lindblad_env import Lindblad_Environment
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
@@ -15,6 +16,7 @@ from sac.sac import SAC
 
 ENV_REGISTRY = {
     "lindblad": Lindblad_Environment,
+    "closed_schroedinger": CLosed_Schroedinger_Env
 }
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

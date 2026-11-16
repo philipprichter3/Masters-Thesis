@@ -5,7 +5,7 @@ from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 
 
-def get_control_sequence(env : GymEnvironment, agent : SAC, seed = 0):
+def get_control_sequence(env : GymEnvironment, agent : SAC, *, seed = 0, deterministic = False):
 
     obs, _ = env.reset(seed=seed)
 
@@ -17,7 +17,7 @@ def get_control_sequence(env : GymEnvironment, agent : SAC, seed = 0):
 
     while True:
 
-        action = agent.act(obs, deterministic=True)
+        action = agent.act(obs, deterministic=deterministic)
 
         obs, _, terminated, _, info = env.step(action)
 
