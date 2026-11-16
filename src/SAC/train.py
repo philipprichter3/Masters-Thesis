@@ -8,7 +8,6 @@ from tqdm.auto import trange
 from debug.training_logger import TrainingLogger
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
-from serialization.serialize_experiment import save_experiment
 from utils.replay_buffer import ReplayBuffer
 from utils.schedules import objective_weights, target_entropy
 
@@ -60,10 +59,7 @@ def train(
         env : GymEnvironment, 
         hyper_params : dict,
         seed = 0,        
-        steps=5_000,
-        *,        
-        env_params: dict | None = None,
-        serialize: bool = False,
+        steps=5_000
     ) -> SAC:
 
     #init all rng
@@ -170,18 +166,6 @@ def train(
             logger.finalize_snapshot(global_step)
 
         logger.update(global_step)
-
-    #serialization
-
-    if serialize:
-
-        _ = save_experiment(
-            agent,
-            env_params=env_params,
-            hyper_params=hyper_params,
-            seed=seed,
-            steps=steps,
-        )
 
     return agent
 
