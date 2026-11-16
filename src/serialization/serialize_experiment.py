@@ -9,12 +9,20 @@ from environments.classes.lindblad_env import Lindblad_Environment
 from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 
+# ======================================================================
+# ============================= PARAMETERS ============================
+# ======================================================================
+
 ENV_REGISTRY = {
     "lindblad": Lindblad_Environment,
 }
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EXPERIMENTS_DIR = PROJECT_ROOT / "experiments"
+
+# ======================================================================
+# ============================= SAVING ============================
+# ======================================================================
 
 def save_experiment(
     agent: SAC,
@@ -39,11 +47,6 @@ def save_experiment(
         ),
         None,
     )
-
-    if env_type is None:
-        raise ValueError(
-            f"Unregistered environment type: {type(env.qm_env).__name__}"
-        )
 
     metadata = {
         "saved_at_utc": saved_at.isoformat(),
@@ -76,6 +79,9 @@ def save_experiment(
 
     return directory
 
+# ======================================================================
+# ============================= LOADING ============================
+# ======================================================================
 
 def experiment_path(experiment_id):
 
