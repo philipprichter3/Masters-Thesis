@@ -55,12 +55,19 @@ class Lindblad_Environment(Environment):
 
             return self.observe_reduced()
 
-        if type == "diagonal":
+        elif type == "diagonal":
 
             return self.observe_diag()
 
+        elif type == "reduced_diagonal":
+
+            return self.observe_reduced_diag()
+
         return self.observe_full()
 
+# ======================================================================
+# ============================= OBSERVATIONS ============================
+# ======================================================================
 
     def observe_full(self):
 
@@ -73,22 +80,24 @@ class Lindblad_Environment(Environment):
 
     def observe_reduced(self):
 
-        rho = self.battery_state().full().ravel()
+        rho_b = self.battery_state().full().ravel()
 
         return np.concatenate((
-            rho.real, 
-            rho.imag
+            rho_b.real, 
+            rho_b.imag
         )).astype(np.float32)
 
     def observe_diag(self):
 
-        rho = self.rho.full().ravel()
+        return np.diag(
+            self.rho.full()
+        ).real.astype(np.float32)
 
-        diag_elements = np.diag(rho)
+    def observe_reduced_diag(self):
 
-        return np.concatenate((
-            diag_elements.real, 
-            diag_elements.imag
-        )).astype(np.float32)
+        rho_b = self.battery_state()
 
+        return np.diag(
+            rho_b.full()
+        ).real.astype(np.float32)
     

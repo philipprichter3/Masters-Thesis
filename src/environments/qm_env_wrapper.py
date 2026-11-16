@@ -11,15 +11,15 @@ class GymEnvironment(gym.Env):
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(self, qm_env : Environment, params : dict):
+    def __init__(self, qm_env : Environment, hyper_params : dict):
 
-        self.min_u = params["min_u"]
-        self.max_u = params["max_u"]
+        self.min_u = hyper_params["MIN_U"]
+        self.max_u = hyper_params["MAX_U"]
 
-        self.objective = params["reward"]
-        self.reward_coeff = params["reward_coeff"]
+        self.objective = hyper_params["REWARD"]
+        self.reward_coeff = hyper_params["REWARD_COEFF"]
 
-        self.observation = params["observation"]
+        self.observation = hyper_params["OBSERVATION"]
 
         self.qm_env = qm_env
 

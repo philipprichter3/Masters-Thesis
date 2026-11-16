@@ -121,7 +121,7 @@ def train(
 
         next_obs, _, terminated, _, info = env.step(action)
 
-        logger.record_step(info)
+        logger.record_for_snapshot(info)
 
         memory.add(
             obs, action, info["objectives"], next_obs, terminated
@@ -161,13 +161,13 @@ def train(
                     target_entropy=entropy,
                 )
 
-                logger.record_update(metrics)
+                logger.record_step(metrics)
 
         if terminated:
 
             obs, _ = env.reset()
 
-            logger.end_episode(global_step)
+            logger.finalize_snapshot(global_step)
 
         logger.update(global_step)
 

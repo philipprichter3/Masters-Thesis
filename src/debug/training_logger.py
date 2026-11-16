@@ -31,14 +31,14 @@ class TrainingLogger:
 # ============================= DATA RECORDING ============================
 # ======================================================================
 
-    def record_step(self, info):
+    def record_for_snapshot(self, info):
 
         if self._log is None:
             return
 
         self._episode_history.append(info)
 
-    def record_update(self, metrics):
+    def record_step(self, metrics):
 
         if self._log is None:
             return
@@ -49,7 +49,7 @@ class TrainingLogger:
 # ============================= SNAPSHOT EPISODES ============================
 # ======================================================================
 
-    def end_episode(self, step):
+    def finalize_snapshot(self, step):
 
         if self._log is None:
             return
