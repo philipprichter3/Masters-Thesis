@@ -226,12 +226,12 @@ class Environment(ABC):
         if rho is None:
             rho = self.rho
 
-        return float(np.real((self.rho * self.rho).tr()))
+        return float(np.real((rho * rho).tr()))
 
     def photon_count(self, rho = None):
 
         if rho is None:
             rho = self.rho
 
-        return float(np.real(qt.expect(self.n_photons_op, self.rho)))
+        return float(np.real(qt.expect(self.n_photons_op, rho)))
 

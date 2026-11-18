@@ -5,11 +5,11 @@ import numpy as np
 import torch
 from tqdm.auto import trange
 
-from debug.training_logger import TrainingLogger
 from environments.qm_env_wrapper import GymEnvironment
+from logs.training_logger import TrainingLogger
+from rl_utils.replay_buffer import ReplayBuffer
+from rl_utils.schedules import objective_weights, target_entropy
 from sac.sac import SAC
-from utils.replay_buffer import ReplayBuffer
-from utils.schedules import objective_weights, target_entropy
 
 # ======================================================================
 # ============================= INIT TRAINING ============================

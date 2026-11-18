@@ -5,7 +5,7 @@ from environments.qm_env_wrapper import GymEnvironment
 from sac.sac import SAC
 
 
-def get_control_sequence(env : GymEnvironment, agent : SAC, *, seed = 0, deterministic = False):
+def get_actions(env : GymEnvironment, agent : SAC, *, seed = 0, deterministic = False):
 
     obs, _ = env.reset(seed=seed)
 

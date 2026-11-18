@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from debug.log import Log
+from logs.log import Log
 
 
 class TrainingLogger:

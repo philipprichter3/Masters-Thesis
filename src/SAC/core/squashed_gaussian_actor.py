@@ -4,8 +4,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.distributions.multivariate_normal import MultivariateNormal
 
-from utils.mlp import mlp
-from utils.rescale_inputs import RescaleInput
+from rl_utils.mlp import mlp
+from rl_utils.rescale_inputs import RescaleInput
 
 
 class SquashedGaussianActor(nn.Module):
