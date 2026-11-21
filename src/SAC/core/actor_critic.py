@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+from sac.core.actor import Actor
 from sac.core.alpha import Alpha
 from sac.core.qfunction import QFunction
-from sac.core.squashed_gaussian_actor import SquashedGaussianActor
+from sac.core.stopping_actor import StoppingActor
 
 
 class ActorCritic(nn.Module):
@@ -14,18 +15,31 @@ class ActorCritic(nn.Module):
             action_space, 
             hidden_sizes=(256,256),
             activation=nn.ReLU, 
-            min_cov_eigen = 1.e-8
+            min_cov_eigen = 1.e-8,
+            stopping = False,
+            initial_stop_probability=0.05
         ):
 
         super().__init__()
 
-        self.pi = SquashedGaussianActor(
-            observation_space, 
-            action_space, 
-            hidden_sizes, 
-            activation,
-            min_cov_eigen=min_cov_eigen
-        )
+        actor_kwargs = {
+            "observation_space": observation_space,
+            "action_space": action_space,
+            "hidden_sizes": hidden_sizes,
+            "activation": activation,
+            "min_cov_eigen": min_cov_eigen
+        }
+
+        if stopping:
+
+            self.pi = StoppingActor(
+                **actor_kwargs,
+                initial_stop_probability=initial_stop_probability
+            )
+            
+        else:
+
+            self.pi = Actor(**actor_kwargs)
 
         self.q1 = QFunction(
             observation_space, 

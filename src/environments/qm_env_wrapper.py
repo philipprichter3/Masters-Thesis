@@ -25,13 +25,23 @@ class GymEnvironment(gym.Env):
 
         self.last_u = self.min_u
         
-        self.action_space = gym.spaces.Box(
-            low=self.min_u,
-            high=self.max_u,
-            shape=(1,),
-            dtype=np.float32
-        )
+        self.use_stopping = hyper_params["USE_STOPPING"]
 
+        # Action space
+        if self.use_stopping:
+            self.action_space = gym.spaces.Box(
+                low=np.array([self.min_u, 0.0], dtype=np.float32),
+                high=np.array([self.max_u, 1.0], dtype=np.float32),
+                dtype=np.float32,
+            )
+        else:
+            self.action_space = gym.spaces.Box(
+                low=np.array([self.min_u], dtype=np.float32),
+                high=np.array([self.max_u], dtype=np.float32),
+                dtype=np.float32,
+            )
+
+        # Observation space
         init_observation = self.observe()
 
         n = len(init_observation) - 2
@@ -43,14 +53,15 @@ class GymEnvironment(gym.Env):
 
         obs_high = np.concatenate([
             np.full(n, 1.0),
-            [self.max_u, qm_env.tau]
+            [self.max_u, self.qm_env.tau]
         ]).astype(np.float32)
 
         self.observation_space = gym.spaces.Box(
-            low = obs_low, 
-            high = obs_high, 
-            dtype = np.float32
+            low=obs_low,
+            high=obs_high,
+            dtype=np.float32,
         )
+
 
     def reset(self, *, seed = None, options = None):
 
@@ -76,16 +87,28 @@ class GymEnvironment(gym.Env):
 
         u = float(action_array[0])
 
+        if self.use_stopping:
+            stop_parameter = float(action_array[1])
+        else:
+            stop_parameter = 0.0
+
         info = dict(self.qm_env.step(u))
 
         info["objectives"] = self.reward(info)
+        info["stop_parameter"] = stop_parameter
 
         self.last_u = u
         observation = self.observe()
 
-        terminated = bool(
+        time_terminated = bool(
             self.qm_env.t >= self.qm_env.tau - 1e-12
         )
+
+        stop_terminated = bool(
+            self.use_stopping and stop_parameter > 0.5
+        )
+
+        terminated = time_terminated or stop_terminated
 
         return observation, 0.0, terminated, False, info
 

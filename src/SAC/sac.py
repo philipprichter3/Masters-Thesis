@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from environments.qm_env_wrapper import GymEnvironment
 from sac.core.actor_critic import ActorCritic
 
 
@@ -17,43 +16,55 @@ class SAC:
 # ======================================================================
 
     def __init__(
-            self, 
-            observation_space, 
-            action_space,
+        self,
+        observation_space,
+        action_space,
 
-            use_cuda = False,
+        use_cuda=False,
 
-            gamma = 0.993,
-            polyak = 0.995,
+        gamma=0.993,
+        polyak=0.995,
 
-            hidden_sizes = (512, 256),
+        hidden_sizes=(512, 256),
+        min_cov_eigen=1.e-7,
 
-            min_cov_eigen = 1.e-7,
-            
-            lr = 0.001,
-            lr_alpha = 0.003,
-        ):
+        lr=0.001,
+        lr_alpha=0.003,
+
+        stopping=False,
+
+        stop_entropy_coef=0.0,
+        initial_stop_probability=0.05,
+    ):
 
         #initialize params
-        
+
         self.device = torch.device(
-            "cuda" if use_cuda
-            else "cpu"
+            "cuda" if use_cuda else "cpu"
         )
 
-        self.gamma = gamma
-        self.polyak = polyak
+        self.gamma = float(gamma)
+        self.polyak = float(polyak)
 
         self.hidden_sizes = tuple(hidden_sizes)
         self.min_cov_eigen = float(min_cov_eigen)
-        
+
+        self.stopping = bool(stopping)
+
+        self.stop_entropy_coef = float(stop_entropy_coef)
+        self.initial_stop_probability = float(
+            initial_stop_probability
+        )
+
         #initialize NNs
 
         self.actor_critic = ActorCritic(
-            observation_space, 
+            observation_space,
             action_space,
             hidden_sizes=hidden_sizes,
-            min_cov_eigen=min_cov_eigen
+            min_cov_eigen=min_cov_eigen,
+            stopping=self.stopping,
+            initial_stop_probability=initial_stop_probability,
         ).to(self.device)
 
         self.q1_target = deepcopy(self.actor_critic.q1).to(self.device)
@@ -70,10 +81,9 @@ class SAC:
         #initialize optimizers
 
         self.q_optimizer = torch.optim.Adam(self.q_params, lr=lr)
-
         self.pi_optimizer = torch.optim.Adam(self.actor_critic.pi.parameters(), lr=lr)
+        self.alpha_optimizer = torch.optim.SGD(self.actor_critic.alpha.parameters(),lr=lr_alpha,)
 
-        self.alpha_optimizer = torch.optim.SGD(self.actor_critic.alpha.parameters(), lr=lr_alpha)
 
 # ======================================================================
 # ============================= ACTION ============================
@@ -82,15 +92,90 @@ class SAC:
     def act(self, observation, deterministic=False):
 
         obs = torch.as_tensor(
-            observation, 
-            dtype=torch.float32, 
-            device=self.device
+            observation,
+            dtype=torch.float32,
+            device=self.device,
         )
 
         return self.actor_critic.act(
-            obs, 
-            deterministic=deterministic
+            obs,
+            deterministic=deterministic,
         ).cpu().numpy().astype(np.float32)
+
+
+# ======================================================================
+# ============================= POLICY UTILS ============================
+# ======================================================================
+
+    def _policy_terms(self, obs, q1, q2):
+
+        if not self.stopping:
+
+            action, logp_u = self.actor_critic.pi(obs)
+
+            expected_q = torch.minimum(
+                q1(obs, action).reshape(-1),
+                q2(obs, action).reshape(-1),
+            )
+
+            expected_logp_stop = torch.zeros_like(logp_u)
+
+            return (
+                expected_q,
+                logp_u,
+                expected_logp_stop,
+                None,
+            )
+
+        # Hybrid stopping policy
+        u, logp_u, p_stop, expected_logp_stop = (
+            self.actor_critic.pi.components(obs)
+        )
+
+        stop_zero = torch.zeros_like(
+            p_stop
+        ).unsqueeze(-1)
+
+        action_continue = torch.cat((u, stop_zero), dim=-1)
+        action_stop = torch.cat((u, torch.ones_like(stop_zero)), dim=-1)
+
+        q_continue = torch.minimum(
+            q1(obs, action_continue).reshape(-1),
+            q2(obs, action_continue).reshape(-1),
+        )
+
+        q_stop = torch.minimum(
+            q1(obs, action_stop).reshape(-1),
+            q2(obs, action_stop).reshape(-1),
+        )
+
+        expected_q = (
+            (1.0 - p_stop) * q_continue
+            + p_stop * q_stop
+        )
+
+        return (
+            expected_q,
+            logp_u,
+            expected_logp_stop,
+            p_stop,
+        )
+
+    def _logp_for_alpha(self, obs):
+        """
+        Temperature learning applies only to the
+        continuous-action distribution.
+        """
+
+        if self.stopping:
+            _, logp_u, _, _ = (
+                self.actor_critic.pi.components(obs)
+            )
+            return logp_u
+
+        _, logp = self.actor_critic.pi(obs)
+        return logp
+
 
 # ======================================================================
 # ============================= UPDATE ============================
@@ -98,37 +183,56 @@ class SAC:
 
     def update(self, batch, *, reward_weights, target_entropy):
 
-        batch = {key: value.to(self.device) for key, value in batch.items()}
+        batch = {
+            key: value.to(self.device)
+            for key, value in batch.items()
+        }
 
         #retrieve data from batch
-        obs, act = batch["obs"], batch["act"]
-        next_obs, terminated = batch["next_obs"], batch["terminated"]
-        objectives = batch["objectives"]  
+        obs = batch["obs"]
+        act = batch["act"]
+        next_obs = batch["next_obs"]
+
+        terminated = batch["terminated"].reshape(-1)
+        objectives = batch["objectives"]
 
         #apply weighting to objectives (blending function to energy vs ergotropy)
         weights = torch.as_tensor(
-            reward_weights, device=self.device, dtype=objectives.dtype
+            reward_weights,
+            device=self.device,
+            dtype=objectives.dtype,
         )
 
-        reward = objectives @ weights
+        reward = (objectives @ weights).reshape(-1)
 
+        alpha = self.actor_critic.alpha()
+
+        #bellman target
         with torch.no_grad():
 
-            next_act, next_logp = self.actor_critic.pi(next_obs)
-
-            next_q = torch.minimum(
-                self.q1_target(next_obs, next_act),
-                self.q2_target(next_obs, next_act),
+            (next_q, next_logp_u, next_logp_stop, _,) = self._policy_terms(
+                next_obs,
+                self.q1_target,
+                self.q2_target,
             )
 
-            #bellman function
-            target_q = reward + self.gamma * (1.0 - terminated) * (
-                next_q - self.actor_critic.alpha() * next_logp
+            next_v = (
+                next_q
+                - alpha * next_logp_u
+                - self.stop_entropy_coef * next_logp_stop
             )
 
-        #optimize critic functions
-        q1 = self.actor_critic.q1(obs, act)
-        q2 = self.actor_critic.q2(obs, act)
+            target_q = (
+                reward
+                + self.gamma
+                * (1.0 - terminated)
+                * next_v
+            )
+
+        #critic update
+
+        q1 = self.actor_critic.q1(obs, act).reshape(-1)
+        q2 = self.actor_critic.q2(obs, act).reshape(-1)
 
         q_loss = ((q1 - target_q).square() + (q2 - target_q).square()).mean()
 
@@ -136,29 +240,38 @@ class SAC:
         q_loss.backward()
         self.q_optimizer.step()
 
+        #actor update
+
         for p in self.q_params:
             p.requires_grad_(False)
 
-        #optimize actor (policy) 
-        pi_act, logp = self.actor_critic.pi(obs)
+        try:
 
-        q_pi = torch.minimum(
-            self.actor_critic.q1(obs, pi_act),
-            self.actor_critic.q2(obs, pi_act),
-        )
+            (q_pi, logp_u, expected_logp_stop, p_stop,) = self._policy_terms(
+                obs,
+                self.actor_critic.q1,
+                self.actor_critic.q2,
+            )
 
-        pi_loss = (self.actor_critic.alpha().detach() * logp - q_pi).mean()
+            pi_loss = (
+                alpha.detach() * logp_u
+                + self.stop_entropy_coef * expected_logp_stop
+                - q_pi
+            ).mean()
 
-        self.pi_optimizer.zero_grad(set_to_none=True)
-        pi_loss.backward()
-        self.pi_optimizer.step()
+            self.pi_optimizer.zero_grad(set_to_none=True)
+            pi_loss.backward()
+            self.pi_optimizer.step()
 
-        for p in self.q_params:
-            p.requires_grad_(True)
+        finally:
 
-        #optimize alpha (temperature)
+            for p in self.q_params:
+                p.requires_grad_(True)
+
+        #temperature update
+
         with torch.no_grad():
-            _, logp_for_alpha = self.actor_critic.pi(obs)
+            logp_for_alpha = self._logp_for_alpha(obs)
 
         alpha_loss = -self.actor_critic.alpha() * (
             logp_for_alpha + float(target_entropy)
@@ -169,78 +282,65 @@ class SAC:
         self.alpha_optimizer.step()
 
         #polyak average critic and target critic functions
+
         with torch.no_grad():
+
             for live, target in (
                 (self.actor_critic.q1, self.q1_target),
                 (self.actor_critic.q2, self.q2_target),
             ):
-                for p, p_target in zip(live.parameters(), target.parameters()):
+
+                for p, p_target in zip(
+                    live.parameters(),
+                    target.parameters(),
+                ):
+
                     p_target.mul_(self.polyak).add_(
-                        p, alpha=1.0 - self.polyak
+                        p,
+                        alpha=1.0 - self.polyak,
                     )
 
-        return {
-            # Optimization
+        diagnostics = {
+
             "q_loss": q_loss.detach().item(),
             "pi_loss": pi_loss.detach().item(),
             "alpha_loss": alpha_loss.detach().item(),
             "alpha": self.actor_critic.alpha().detach().item(),
 
-            # Critic diagnostics
             "q1": q1.detach().mean().item(),
             "q2": q2.detach().mean().item(),
-            "q_diff": (q1.detach() - q2.detach()).abs().mean().item(),
+            "q_diff": (
+                q1.detach() - q2.detach()
+            ).abs().mean().item(),
             "target_q": target_q.detach().mean().item(),
             "td_error": (
                 0.5 * (
-                    (q1.detach() - target_q).abs() +
-                    (q2.detach() - target_q).abs()
+                    (q1.detach() - target_q).abs()
+                    + (q2.detach() - target_q).abs()
                 )
             ).mean().item(),
 
-            # Rewards
             "reward": reward.detach().mean().item(),
 
-            # Policy diagnostics
             "q_pi": q_pi.detach().mean().item(),
-            "entropy": -logp.detach().mean().item(),
+            "entropy": -logp_u.detach().mean().item(),
             "target_entropy": float(target_entropy),
         }
 
-# ======================================================================
-# ============================= EVALUATION ============================
-# ======================================================================
+        if self.stopping:
 
-    def get_actions(self, env : GymEnvironment, *, seed = 0, deterministic = False):
+            diagnostics.update({
+                "stop_probability": (
+                    p_stop.detach().mean().item()
+                ),
+                "stop_entropy": (
+                    -expected_logp_stop.detach().mean().item()
+                ),
+                "stop_entropy_coef": self.stop_entropy_coef,
+            })
 
-            obs, _ = env.reset(seed=seed)
+        return diagnostics
 
-            times = [float(env.qm_env.t)]
-
-            actions = []
-
-            final_info = {}
-
-            while True:
-
-                action = self.act(obs, deterministic=deterministic)
-
-                obs, _, terminated, _, info = env.step(action)
-
-                actions.append(float(np.asarray(action).reshape(-1)[0]))
-
-                times.append(float(env.qm_env.t))
-
-                final_info = info
-
-                if terminated:
-                    break
-
-            return (
-                np.asarray(times, dtype=np.float64),
-                np.asarray(actions, dtype=np.float32),
-                final_info,
-            )
 
 # ======================================================================
 # ============================= SERIALIZATION ============================
@@ -253,9 +353,8 @@ class SAC:
 
         torch.save(
             self.actor_critic.pi.state_dict(),
-            path
+            path,
         )
-
 
     @classmethod
     def load(
@@ -265,21 +364,24 @@ class SAC:
         action_space,
         *,
         hidden_sizes,
-        use_cuda=False
+        use_cuda=False,
+        stopping=False,
+        initial_stop_probability=0.05,
     ):
 
         agent = cls(
             observation_space,
             action_space,
-            
             use_cuda=use_cuda,
-            hidden_sizes=hidden_sizes
+            hidden_sizes=hidden_sizes,
+            stopping=stopping,
+            initial_stop_probability=initial_stop_probability,
         )
 
         state_dict = torch.load(
             path,
             map_location="cpu",
-            weights_only=True
+            weights_only=True,
         )
 
         agent.actor_critic.pi.load_state_dict(state_dict)

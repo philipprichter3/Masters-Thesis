@@ -8,7 +8,7 @@ from rl_utils.mlp import mlp
 from rl_utils.rescale_inputs import RescaleInput
 
 
-class SquashedGaussianActor(nn.Module):
+class Actor(nn.Module):
 
     def __init__(
             self, 
@@ -63,12 +63,16 @@ class SquashedGaussianActor(nn.Module):
         #run the state through the network
         net_out = self.rescale_input(obs)
         net_out = self.net(net_out)
+
         mu = self.mu_layer(net_out)
+
         m = self.m_layer(net_out).view(-1,self.act_dim,self.act_dim)
+
         cov_mat = (torch.transpose(m,1,2) @ m) + self.l_id
 
         # Pre-squash (tanh) distribution and sample
         pi_distribution = MultivariateNormal(mu, cov_mat)
+        
         if deterministic:
             pi_action = mu
         else:
