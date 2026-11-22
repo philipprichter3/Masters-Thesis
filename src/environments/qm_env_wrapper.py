@@ -31,7 +31,6 @@ class GymEnvironment(gym.Env):
             dtype=np.float32,
         )
 
-        # Observation space
         init_observation = self.observe()
 
         n = len(init_observation) - 2

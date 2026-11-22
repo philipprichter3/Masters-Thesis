@@ -143,9 +143,10 @@ class SAC:
         continuous-action distribution.
         """
 
-        _, logp_u, _, _ = (
-            self.actor_critic.pi.components(obs)
+        _, logp_u = (
+            self.actor_critic.pi.control(obs)
         )
+
         return logp_u
 
 
@@ -300,7 +301,6 @@ class SAC:
 
             "stop_probability": p_stop.detach().mean().item(),
             "stop_entropy": -expected_logp_stop.detach().mean().item(),
-            "stop_entropy_coef": self.stop_entropy_coef,
         }
 
         return diagnostics

@@ -87,7 +87,7 @@ class StoppingActor(nn.Module):
         )
 
         if deterministic:
-            stop = p_stop
+            stop = (p_stop > 0.5).float()
         else:
             stop = torch.bernoulli(p_stop)
 
