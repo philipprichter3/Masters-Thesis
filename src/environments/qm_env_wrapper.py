@@ -24,22 +24,12 @@ class GymEnvironment(gym.Env):
         self.qm_env = qm_env
 
         self.last_u = self.min_u
-        
-        self.use_stopping = hyper_params["USE_STOPPING"]
 
-        # Action space
-        if self.use_stopping:
-            self.action_space = gym.spaces.Box(
-                low=np.array([self.min_u, 0.0], dtype=np.float32),
-                high=np.array([self.max_u, 1.0], dtype=np.float32),
-                dtype=np.float32,
-            )
-        else:
-            self.action_space = gym.spaces.Box(
-                low=np.array([self.min_u], dtype=np.float32),
-                high=np.array([self.max_u], dtype=np.float32),
-                dtype=np.float32,
-            )
+        self.action_space = gym.spaces.Box(
+            low=np.array([self.min_u, 0.0], dtype=np.float32),
+            high=np.array([self.max_u, 1.0], dtype=np.float32),
+            dtype=np.float32,
+        )
 
         # Observation space
         init_observation = self.observe()
@@ -87,10 +77,7 @@ class GymEnvironment(gym.Env):
 
         u = float(action_array[0])
 
-        if self.use_stopping:
-            stop_parameter = float(action_array[1])
-        else:
-            stop_parameter = 0.0
+        stop_parameter = float(action_array[1])
 
         info = dict(self.qm_env.step(u))
 
@@ -105,7 +92,7 @@ class GymEnvironment(gym.Env):
         )
 
         stop_terminated = bool(
-            self.use_stopping and stop_parameter > 0.5
+            stop_parameter > 0.5
         )
 
         terminated = time_terminated or stop_terminated

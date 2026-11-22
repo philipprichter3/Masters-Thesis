@@ -16,30 +16,19 @@ class ActorCritic(nn.Module):
             hidden_sizes=(256,256),
             activation=nn.ReLU, 
             min_cov_eigen = 1.e-8,
-            stopping = False,
             initial_stop_probability=0.05
         ):
 
         super().__init__()
 
-        actor_kwargs = {
-            "observation_space": observation_space,
-            "action_space": action_space,
-            "hidden_sizes": hidden_sizes,
-            "activation": activation,
-            "min_cov_eigen": min_cov_eigen
-        }
-
-        if stopping:
-
-            self.pi = StoppingActor(
-                **actor_kwargs,
-                initial_stop_probability=initial_stop_probability
-            )
-            
-        else:
-
-            self.pi = Actor(**actor_kwargs)
+        self.pi = StoppingActor(
+            observation_space,
+            action_space,
+            hidden_sizes,
+            activation,
+            min_cov_eigen,
+            initial_stop_probability
+        )
 
         self.q1 = QFunction(
             observation_space, 

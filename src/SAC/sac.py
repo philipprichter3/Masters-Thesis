@@ -31,8 +31,6 @@ class SAC:
         lr=0.001,
         lr_alpha=0.003,
 
-        stopping=False,
-
         stop_entropy_coef=0.0,
         initial_stop_probability=0.05,
     ):
@@ -49,8 +47,6 @@ class SAC:
         self.hidden_sizes = tuple(hidden_sizes)
         self.min_cov_eigen = float(min_cov_eigen)
 
-        self.stopping = bool(stopping)
-
         self.stop_entropy_coef = float(stop_entropy_coef)
         self.initial_stop_probability = float(
             initial_stop_probability
@@ -63,7 +59,6 @@ class SAC:
             action_space,
             hidden_sizes=hidden_sizes,
             min_cov_eigen=min_cov_eigen,
-            stopping=self.stopping,
             initial_stop_probability=initial_stop_probability,
         ).to(self.device)
 
@@ -109,25 +104,6 @@ class SAC:
 
     def _policy_terms(self, obs, q1, q2):
 
-        if not self.stopping:
-
-            action, logp_u = self.actor_critic.pi(obs)
-
-            expected_q = torch.minimum(
-                q1(obs, action).reshape(-1),
-                q2(obs, action).reshape(-1),
-            )
-
-            expected_logp_stop = torch.zeros_like(logp_u)
-
-            return (
-                expected_q,
-                logp_u,
-                expected_logp_stop,
-                None,
-            )
-
-        # Hybrid stopping policy
         u, logp_u, p_stop, expected_logp_stop = (
             self.actor_critic.pi.components(obs)
         )
@@ -167,14 +143,10 @@ class SAC:
         continuous-action distribution.
         """
 
-        if self.stopping:
-            _, logp_u, _, _ = (
-                self.actor_critic.pi.components(obs)
-            )
-            return logp_u
-
-        _, logp = self.actor_critic.pi(obs)
-        return logp
+        _, logp_u, _, _ = (
+            self.actor_critic.pi.components(obs)
+        )
+        return logp_u
 
 
 # ======================================================================
@@ -325,19 +297,11 @@ class SAC:
             "q_pi": q_pi.detach().mean().item(),
             "entropy": -logp_u.detach().mean().item(),
             "target_entropy": float(target_entropy),
+
+            "stop_probability": p_stop.detach().mean().item(),
+            "stop_entropy": -expected_logp_stop.detach().mean().item(),
+            "stop_entropy_coef": self.stop_entropy_coef,
         }
-
-        if self.stopping:
-
-            diagnostics.update({
-                "stop_probability": (
-                    p_stop.detach().mean().item()
-                ),
-                "stop_entropy": (
-                    -expected_logp_stop.detach().mean().item()
-                ),
-                "stop_entropy_coef": self.stop_entropy_coef,
-            })
 
         return diagnostics
 
@@ -365,7 +329,6 @@ class SAC:
         *,
         hidden_sizes,
         use_cuda=False,
-        stopping=False,
         initial_stop_probability=0.05,
     ):
 
@@ -374,7 +337,6 @@ class SAC:
             action_space,
             use_cuda=use_cuda,
             hidden_sizes=hidden_sizes,
-            stopping=stopping,
             initial_stop_probability=initial_stop_probability,
         )
 

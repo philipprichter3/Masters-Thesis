@@ -38,8 +38,6 @@ def init(
         lr = hyper_params["LR"],
         lr_alpha = hyper_params["ALPHA_LR"],
 
-        stopping=hyper_params["USE_STOPPING"],
-
         stop_entropy_coef=hyper_params["STOP_ENTROPY_COEF"],
         initial_stop_probability=hyper_params["INITIAL_STOP_PROB"]
     )
@@ -104,7 +102,6 @@ def train(
     h_end=hyper_params["H_END"]
     h_decay=hyper_params["H_DECAY"]
 
-    use_stopping = hyper_params["USE_STOPPING"]
     initial_stop_prob = hyper_params["INITIAL_STOP_PROB"]
 
     obs, _ = env.reset(seed=seed)
@@ -121,12 +118,10 @@ def train(
 
             action = env.action_space.sample()
 
-            if use_stopping:
-
-                action[-1] = float(
-                    np.random.random()
-                    < initial_stop_prob
-                )
+            action[-1] = float(
+                np.random.random()
+                < initial_stop_prob
+            )
 
         else:
             action = agent.act(obs)
