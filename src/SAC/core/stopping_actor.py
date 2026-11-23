@@ -59,7 +59,7 @@ class StoppingActor(nn.Module):
 
     def components(self, obs, deterministic=False):
 
-        control, logp_u = self.control(
+        u, logp_u = self.control(
             obs, 
             deterministic=deterministic,
             with_logprob=True
@@ -77,7 +77,7 @@ class StoppingActor(nn.Module):
             + (1.0 - p_stop) * F.logsigmoid(-logits)
         )
 
-        return control, logp_u, p_stop, expected_logp_stop
+        return u, logp_u, p_stop, expected_logp_stop
 
     def forward(self, obs, deterministic=False, with_logprob=True):
 
