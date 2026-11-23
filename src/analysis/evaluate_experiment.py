@@ -102,28 +102,75 @@ class ExperimentPlotter:
 
             histories = self.histories[experiment_id]
 
-            if not histories or not histories[0]:
+            if not histories:
                 continue
+
+            # Common time grid across all trajectories
+            times = np.unique(np.concatenate([
+                np.array([entry["time"] for entry in results],
+                        dtype=float)
+                for results in histories
+                if results
+            ]))
 
             plot_data[experiment_id] = {}
 
-            times = np.array([
-                entry["time"]
-                for entry in histories[0]
-            ])
-
             for key in self.keys:
 
-                values = np.array([
-                    [
+                aligned_values = []
+
+                for results in histories:
+
+                    if not results:
+                        continue
+
+                    t = np.array([
+                        entry["time"]
+                        for entry in results
+                    ], dtype=float)
+
+                    y = np.array([
                         entry.get(key, np.nan)
                         for entry in results
-                    ]
-                    for results in histories
-                ], dtype=float)
+                    ], dtype=float)
+
+                    # Ignore missing or non-finite observations
+                    valid = np.isfinite(t) & np.isfinite(y)
+
+                    aligned = np.full(
+                        len(times), np.nan, dtype=float
+                    )
+
+                    if np.count_nonzero(valid) >= 2:
+
+                        aligned = np.interp(
+                            times,
+                            t[valid],
+                            y[valid],
+                            left=np.nan,
+                            right=np.nan
+                        )
+
+                    elif np.count_nonzero(valid) == 1:
+
+                        idx = np.flatnonzero(
+                            np.isclose(times, t[valid][0])
+                        )
+
+                        aligned[idx] = y[valid][0]
+
+                    aligned_values.append(aligned)
+
+                if not aligned_values:
+                    continue
+
+                values = np.vstack(aligned_values)
 
                 with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
+                    warnings.simplefilter(
+                        "ignore", RuntimeWarning
+                    )
+
                     mean = np.nanmean(values, axis=0)
                     std = np.nanstd(values, axis=0)
 

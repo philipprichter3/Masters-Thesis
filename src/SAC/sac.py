@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from environments.qm_env_wrapper import GymEnvironment
 from sac.core.actor_critic import ActorCritic
 
 
@@ -305,6 +306,44 @@ class SAC:
 
         return diagnostics
 
+
+# ======================================================================
+# ============================= EVALUATION ============================
+# ======================================================================
+
+    def get_actions(self, env : GymEnvironment, *, seed = 0, deterministic = False):
+
+            obs, _ = env.reset(seed=seed)
+
+            times = [float(env.qm_env.t)]
+
+            actions = []
+            stop_parameters = []
+
+            final_info = {}
+
+            while True:
+
+                action = self.act(obs, deterministic=deterministic)
+
+                obs, _, terminated, _, info = env.step(action)
+
+                actions.append(float(np.asarray(action).reshape(-1)[0]))
+                stop_parameters.append(float(np.asarray(action).reshape(-1)[1]))
+
+                times.append(float(env.qm_env.t))
+
+                final_info = info
+
+                if terminated:
+                    break
+
+            return (
+                np.asarray(times, dtype=np.float64),
+                np.asarray(actions, dtype=np.float32),
+                np.asarray(stop_parameters, dtype=np.float32),
+                final_info,
+            )
 
 # ======================================================================
 # ============================= SERIALIZATION ============================
