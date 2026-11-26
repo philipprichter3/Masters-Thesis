@@ -139,10 +139,6 @@ class SAC:
         )
 
     def _logp_for_alpha(self, obs):
-        """
-        Temperature learning applies only to the
-        continuous-action distribution.
-        """
 
         _, logp_u = (
             self.actor_critic.pi.control(obs)
