@@ -1,13 +1,9 @@
-import math
 
-import matplotlib.pyplot as plt
 import numpy as np
 from blinker import Signal
-from IPython.display import display
 
-# ======================================================================
-# ============================= LOG CLASS ============================
-# ======================================================================
+from logs.log_plotter import Plot
+
 
 class Log:
 
@@ -15,14 +11,13 @@ class Log:
 # ============================= INIT ============================
 # ======================================================================
 
-    def __init__(self, create_plot = False, update_every = 200, key_filters = None):
+    def __init__(self, create_plot = False, key_filters = None):
 
         self.steps = []
 
         self.history = {}
         self.snapshots = {}
 
-        self.update_every = update_every
         self.key_filters = key_filters
 
         self.new_log_keys = []
@@ -48,27 +43,25 @@ class Log:
 
     def log(self, step, **metrics):
 
-        if step % self.update_every != 0:
-
-            return
-
         metrics = self._filter(metrics)
+
+        if not metrics:
+            return
 
         new_keys = [k for k in metrics if k not in self.history]
 
         for key in new_keys:
+            self.history[key] = [np.nan] * len(self.steps)
 
-            if self.key_filters == {} or key in self.key_filters:
-        
-                self.history[key] = [np.nan] * len(self.steps)
+        if not self.steps or self.steps[-1] != step:
 
-        self.steps.append(step)
+            self.steps.append(step)
 
-        for key in self.history:
+            for key in self.history:
+                self.history[key].append(np.nan)
 
-            self.history[key].append(
-                float(metrics.get(key, np.nan))
-            )
+        for key, value in metrics.items():
+            self.history[key][-1] = float(value)
 
         self.new_log_keys.extend(new_keys)
 
@@ -106,10 +99,6 @@ class Log:
 
     def update(self, step):
 
-        if step % self.update_every != 0:
-
-            return
-
         self.updated.send(
             self, 
             new_keys = self.new_log_keys.copy(), 
@@ -119,111 +108,25 @@ class Log:
         self.new_log_keys.clear()
         self.new_snapshot_keys.clear()
 
-
-
-
 # ======================================================================
-# ============================= PLOT CLASS ============================
+# ============================= SERIALIZATION ==========================
 # ======================================================================
 
-class Plot:
+    def state_dict(self):
 
-# ======================================================================
-# ============================= INIT ============================
-# ======================================================================
+        return {
+            "steps": self.steps,
+            "history": self.history,
+            "snapshots": self.snapshots,
+            "key_filters": self.key_filters,
+        }
 
-    def __init__(self, logger: Log, ncols=3):
+    def load_state_dict(self, state):
 
-        self.ncols = ncols
+        self.steps = state["steps"]
+        self.history = state["history"]
+        self.snapshots = state["snapshots"]
+        self.key_filters = state["key_filters"]
 
-        self.fig = None
-        self.handle = None
-
-        self.axes = {}
-        self.lines = {}
-
-        logger.updated.connect(self.update, weak=False)
-
-    def _setup(self, sender: Log):
-
-        keys = (
-            [("metric", k) for k in sender.history]
-            + [("snapshot", k) for k in sender.snapshots]
-        )
-
-        n = len(keys)
-
-        ncols = min(self.ncols, n)
-        nrows = math.ceil(n / ncols)
-
-        fig, axes = plt.subplots(
-            nrows, ncols,
-            figsize=(5 * ncols, 3 * nrows),
-            squeeze=False
-        )
-
-        self.fig = fig
-        self.axes = {}
-        self.lines = {}
-
-        for ax, (kind, key) in zip(axes.flat, keys):
-
-            line, = ax.plot([], [], lw=1.5)
-
-            ax.set_title(key)
-            ax.set_xlabel(
-                "Training step" if kind == "metric" else "x"
-            )
-            ax.grid(True, alpha=0.3)
-
-            self.axes[(kind, key)] = ax
-            self.lines[(kind, key)] = line
-
-        for ax in axes.flat[n:]:
-            ax.set_visible(False)
-
-        fig.tight_layout()
-
-
-# ======================================================================
-# ============================= RUNTIME ============================
-# ======================================================================
-
-    def update(
-        self,
-        sender: Log,
-        new_keys=(),
-        new_snapshots=()
-    ):
-
-        if not sender.history and not sender.snapshots:
-            return
-
-        if self.fig is None or new_keys or new_snapshots:
-            self._setup(sender)
-
-        for (kind, key), line in self.lines.items():
-
-            ax = self.axes[(kind, key)]
-
-            if kind == "metric":
-
-                x = sender.steps
-                y = sender.history[key]
-
-            else:
-
-                _, x, y = sender.snapshots[key]
-                ax.set_title(key)
-
-            line.set_data(x, y)
-
-            ax.relim()
-            ax.autoscale_view()
-
-        if self.handle is None:
-            self.handle = display(self.fig, display_id=True)
-        else:
-            self.handle.update(self.fig)
-
-        plt.close(self.fig)
+        self.new_log_keys = list(self.history)
+        self.new_snapshot_keys = list(self.snapshots)

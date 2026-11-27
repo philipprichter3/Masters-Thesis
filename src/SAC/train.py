@@ -167,5 +167,5 @@ def train(
 
         logger.update(global_step)
 
-    return agent
+    return agent, logger
 

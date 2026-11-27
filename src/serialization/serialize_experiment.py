@@ -8,6 +8,7 @@ import torch
 from environments.classes.closed_schroedinger_env import CLosed_Schroedinger_Env
 from environments.classes.lindblad_env import Lindblad_Environment
 from environments.qm_env_wrapper import GymEnvironment
+from logs.training_logger import TrainingLogger
 from sac.sac import SAC
 
 # ======================================================================
@@ -34,6 +35,7 @@ def save_experiment(
     hyper_params: dict,
     seed: int,
     steps: int,
+    logger: TrainingLogger,
 ) -> Path:
 
     saved_at = datetime.now(UTC)
@@ -72,6 +74,8 @@ def save_experiment(
 
     agent.save(directory / "agent.pt")
 
+    logger.save(directory / "logger.pt")
+
     (directory / "metadata.json").write_text(
         metadata_json + "\n",
         encoding="utf-8",
@@ -80,8 +84,6 @@ def save_experiment(
     print(f"Finished experiment saved: {directory.name}")
 
     return directory
-
-
 
 # ======================================================================
 # ============================= LOADING ============================
@@ -141,4 +143,15 @@ def load_experiment(experiment_id):
         ),
     )
 
-    return agent, gym_env, metadata
+    logger_path = directory / "logger.pt"
+
+    logger = (
+        TrainingLogger.load(
+            logger_path,
+            metadata["hyper_params"],
+        )
+        if logger_path.exists()
+        else TrainingLogger(metadata["hyper_params"])
+    )
+
+    return agent, gym_env, metadata, logger
